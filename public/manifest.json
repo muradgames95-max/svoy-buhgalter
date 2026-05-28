@@ -1,0 +1,38 @@
+{
+  "name": "Свой Бухгалтер",
+  "short_name": "СвойБух",
+  "description": "AI-налоговый помощник для самозанятых и ИП",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f8fc",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "productivity", "business"],
+  "lang": "ru",
+  "shortcuts": [
+    {
+      "name": "AI-консультант",
+      "url": "/chat",
+      "description": "Задать вопрос по налогам"
+    },
+    {
+      "name": "Добавить доход",
+      "url": "/dashboard",
+      "description": "Открыть трекер доходов"
+    }
+  ]
+}
