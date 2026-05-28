@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
     if (count >= limits.documents) {
       return new Response(
-        JSON.stringify({ error: 'limit', message: `Лимит ${limits.documents} документ в месяц исчерпан. Оформите подписку для продолжения.` }),
+        JSON.stringify({ error: 'limit', message: `Лимит документов на бесплатном тарифе исчерпан. Оформите подписку для продолжения.` }),
         { status: 429, headers: { 'Content-Type': 'application/json' } }
       )
     }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Plus, Trash2, Download, Pencil, Check, X, ShoppingBag, RefreshCw, Repeat2 } from 'lucide-react'
 import { cn, formatRubles } from '@/lib/utils'
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '@/lib/storage'
@@ -63,7 +63,13 @@ export default function ExpenseTracker({ totalIncome }: { totalIncome: number })
     saveToStorage(STORAGE_KEYS.EXPENSES, next)
   }
 
-  const total = expenses.reduce((s, e) => s + e.amount, 0)
+  const currentYear = new Date().getFullYear()
+  const yearExpenses = useMemo(() =>
+    expenses.filter((e) => parseInt(e.date.split('-')[0]) === currentYear),
+    [expenses]
+  )
+
+  const total = yearExpenses.reduce((s, e) => s + e.amount, 0)
   const profit = totalIncome - total
   const expenseRatio = totalIncome > 0 ? Math.min((total / totalIncome) * 100, 100) : 0
   const recurring = expenses.filter((e) => e.recurring)
@@ -154,7 +160,7 @@ export default function ExpenseTracker({ totalIncome }: { totalIncome: number })
           <div className="grid grid-cols-2 gap-3 mt-5">
             <div className="bg-white/10 rounded-2xl px-4 py-3">
               <p className="text-rose-300 text-xs mb-0.5">Статей расходов</p>
-              <p className="text-white font-bold text-lg">{expenses.length}</p>
+              <p className="text-white font-bold text-lg">{yearExpenses.length}</p>
             </div>
             <div className="bg-white/10 rounded-2xl px-4 py-3">
               <p className="text-rose-300 text-xs mb-0.5">% от доходов</p>
@@ -199,7 +205,7 @@ export default function ExpenseTracker({ totalIncome }: { totalIncome: number })
           <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">По категориям</p>
           <div className="space-y-2">
             {CATEGORIES.map((cat) => {
-              const catTotal = expenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0)
+              const catTotal = yearExpenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0)
               if (catTotal === 0) return null
               const pct = total > 0 ? (catTotal / total) * 100 : 0
               return (

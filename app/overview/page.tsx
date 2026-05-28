@@ -72,13 +72,16 @@ export default function OverviewPage() {
   const currentMonth = new Date().getMonth() + 1
   const currentYear = new Date().getFullYear()
 
-  const totalIncome  = useMemo(() => incomes.reduce((s, i) => s + i.amount, 0), [incomes])
-  const totalTax     = useMemo(() => incomes.reduce((s, i) => s + calculateNPDTax(i.amount, i.isLegal), 0), [incomes])
-  const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses])
+  const yearIncomes  = useMemo(() => incomes.filter((i) => parseInt(i.date.split('-')[0]) === currentYear), [incomes, currentYear])
+  const yearExpenses = useMemo(() => expenses.filter((e) => parseInt(e.date.split('-')[0]) === currentYear), [expenses, currentYear])
+
+  const totalIncome  = useMemo(() => yearIncomes.reduce((s, i) => s + i.amount, 0), [yearIncomes])
+  const totalTax     = useMemo(() => yearIncomes.reduce((s, i) => s + calculateNPDTax(i.amount, i.isLegal), 0), [yearIncomes])
+  const totalExpenses = useMemo(() => yearExpenses.reduce((s, e) => s + e.amount, 0), [yearExpenses])
 
   const thisMonthIncome = useMemo(() =>
-    incomes.filter((i) => parseInt(i.date.split('-')[1]) === currentMonth).reduce((s, i) => s + i.amount, 0),
-    [incomes, currentMonth]
+    yearIncomes.filter((i) => parseInt(i.date.split('-')[1]) === currentMonth).reduce((s, i) => s + i.amount, 0),
+    [yearIncomes, currentMonth]
   )
 
   const usagePct = Math.min((totalIncome / NPD_LIMIT) * 100, 100)
@@ -95,8 +98,8 @@ export default function OverviewPage() {
   )
 
   const recentIncomes = useMemo(() =>
-    [...incomes].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
-    [incomes]
+    [...yearIncomes].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
+    [yearIncomes]
   )
 
   // Smart insights
@@ -118,15 +121,15 @@ export default function OverviewPage() {
   }, [thisMonthIncome, lastMonthIncome])
 
   const thisMonthTax = useMemo(() =>
-    incomes
+    yearIncomes
       .filter((i) => parseInt(i.date.split('-')[1]) === currentMonth)
       .reduce((s, i) => s + calculateNPDTax(i.amount, i.isLegal), 0),
-    [incomes, currentMonth]
+    [yearIncomes, currentMonth]
   )
 
   const topExpenseCategory = useMemo(() => {
     const map: Record<string, number> = {}
-    expenses.forEach((e) => { map[e.category] = (map[e.category] ?? 0) + e.amount })
+    yearExpenses.forEach((e) => { map[e.category] = (map[e.category] ?? 0) + e.amount })
     const sorted = Object.entries(map).sort((a, b) => b[1] - a[1])
     return sorted[0] ?? null
   }, [expenses])

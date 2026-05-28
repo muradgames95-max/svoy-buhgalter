@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { STORAGE_KEYS } from '@/lib/storage'
+import { STORAGE_KEYS, ARRAY_STORAGE_KEYS } from '@/lib/storage'
 
 const SYNC_KEYS = [
   STORAGE_KEYS.INCOMES,
@@ -10,17 +10,16 @@ const SYNC_KEYS = [
   STORAGE_KEYS.CLIENTS,
   STORAGE_KEYS.DOCUMENTS,
   STORAGE_KEYS.PROFILE,
+  STORAGE_KEYS.SETTINGS,
   STORAGE_KEYS.CHAT_HISTORY,
 ] as const
 
 function getLocalPayload(): Record<string, string> {
   const payload: Record<string, string> = {}
   for (const key of SYNC_KEYS) {
-    payload[key] = localStorage.getItem(key) ?? (key.endsWith('[]') ? '[]' : '{}')
+    const stored = localStorage.getItem(key)
+    payload[key] = stored ?? (ARRAY_STORAGE_KEYS.has(key) ? '[]' : '{}')
   }
-  // settings key doesn't have its own STORAGE_KEY constant yet, include it manually
-  const settingsKey = 'sb_settings'
-  payload[settingsKey] = localStorage.getItem(settingsKey) ?? '{}'
   return payload
 }
 

@@ -24,8 +24,17 @@ export const STORAGE_KEYS = {
   CLIENTS: 'sb_clients',
   PROFILE: 'sb_profile',
   DOCUMENTS: 'sb_documents',
+  SETTINGS: 'sb_settings',
   ONBOARDING_DONE: 'sb_onboarding_done',
   MONTHLY_GOAL: 'sb_monthly_goal',
   TAX_PAID: 'sb_tax_paid',
   CHAT_HISTORY: 'sb_chat_history',
 } as const
+
+export const ARRAY_STORAGE_KEYS: ReadonlySet<string> = new Set([
+  'sb_incomes',
+  'sb_expenses',
+  'sb_clients',
+  'sb_documents',
+  'sb_chat_history',
+])

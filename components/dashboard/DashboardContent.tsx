@@ -18,11 +18,14 @@ const MONTH_NAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Ию
 function SummaryView({ totalIncome, totalExpenses }: { totalIncome: number; totalExpenses: number }) {
   const [incomes, setIncomes] = useState<Income[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const currentYear = new Date().getFullYear()
 
   useEffect(() => {
-    setIncomes(loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, []))
-    setExpenses(loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []))
-  }, [])
+    const allIncomes = loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, [])
+    const allExpenses = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, [])
+    setIncomes(allIncomes.filter((i) => parseInt(i.date.split('-')[0]) === currentYear))
+    setExpenses(allExpenses.filter((e) => parseInt(e.date.split('-')[0]) === currentYear))
+  }, [currentYear])
 
   const tax = incomes.reduce((s, i) => s + (i.tax ?? 0), 0)
   const profit = totalIncome - totalExpenses
@@ -273,13 +276,16 @@ export default function DashboardContent() {
   const [tab, setTab] = useState<Tab>('income')
   const [totalIncome, setTotalIncome] = useState(0)
   const [totalExpenses, setTotalExpenses] = useState(0)
+  const currentYear = new Date().getFullYear()
 
   useEffect(() => {
     const incomes = loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, [])
     const exps = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, [])
-    setTotalIncome(incomes.reduce((s, i) => s + i.amount, 0))
-    setTotalExpenses(exps.reduce((s, e) => s + e.amount, 0))
-  }, [tab])
+    const yearIncomes = incomes.filter((i) => parseInt(i.date.split('-')[0]) === currentYear)
+    const yearExpenses = exps.filter((e) => parseInt(e.date.split('-')[0]) === currentYear)
+    setTotalIncome(yearIncomes.reduce((s, i) => s + i.amount, 0))
+    setTotalExpenses(yearExpenses.reduce((s, e) => s + e.amount, 0))
+  }, [tab, currentYear])
 
   const TABS: { id: Tab; label: string; icon: React.ElementType; active: string }[] = [
     { id: 'income', label: 'Доходы', icon: TrendingUp, active: 'bg-indigo-600 text-white shadow-sm shadow-indigo-200' },

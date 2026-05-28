@@ -34,11 +34,19 @@ const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','
 
 type Period = 'q1' | 'q2' | 'q3' | 'q4' | 'year' | 'custom'
 
+function getCurrentQuarter(): Period {
+  const m = new Date().getMonth() + 1
+  if (m <= 3) return 'q1'
+  if (m <= 6) return 'q2'
+  if (m <= 9) return 'q3'
+  return 'q4'
+}
+
 export default function ReportGenerator() {
   const [incomes, setIncomes] = useState<Income[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
-  const [period, setPeriod] = useState<Period>('q2')
-  const [year, setYear] = useState(2026)
+  const [period, setPeriod] = useState<Period>(getCurrentQuarter)
+  const [year, setYear] = useState(() => new Date().getFullYear())
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
 
@@ -140,7 +148,7 @@ export default function ReportGenerator() {
                 onChange={(e) => setYear(parseInt(e.target.value))}
                 className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
-                {[2024, 2025, 2026].map((y) => (
+                {Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - i).map((y) => (
                   <option key={y} value={y}>{y}</option>
                 ))}
               </select>

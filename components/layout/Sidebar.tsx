@@ -56,10 +56,12 @@ export default function Sidebar() {
     []
   )
 
-  const npdUsagePct = useMemo(() =>
-    incomes.reduce((s, i) => s + i.amount, 0) / NPD_LIMIT,
-    [incomes]
-  )
+  const npdUsagePct = useMemo(() => {
+    const currentYear = new Date().getFullYear()
+    return incomes
+      .filter((i) => parseInt(i.date.split('-')[0]) === currentYear)
+      .reduce((s, i) => s + i.amount, 0) / NPD_LIMIT
+  }, [incomes])
 
   const showFinancesAlert = npdUsagePct > 0.75
 

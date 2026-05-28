@@ -9,6 +9,10 @@ export async function POST(req: Request) {
     if (!name?.trim() || !email?.trim() || !password) {
       return NextResponse.json({ error: 'Заполните все поля' }, { status: 400 })
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.trim())) {
+      return NextResponse.json({ error: 'Введите корректный email' }, { status: 400 })
+    }
     if (password.length < 6) {
       return NextResponse.json({ error: 'Пароль должен быть не менее 6 символов' }, { status: 400 })
     }

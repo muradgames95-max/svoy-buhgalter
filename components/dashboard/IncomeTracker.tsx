@@ -67,8 +67,17 @@ export default function IncomeTracker() {
     saveToStorage(STORAGE_KEYS.INCOMES, next)
   }
 
-  const totalIncome = incomes.reduce((s, i) => s + i.amount, 0)
-  const totalTax = incomes.reduce((s, i) => s + calculateNPDTax(i.amount, i.isLegal), 0)
+  const currentYear = new Date().getFullYear()
+  const currentMonth = new Date().getMonth() + 1
+  const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1
+
+  const yearIncomes = useMemo(() =>
+    incomes.filter((i) => parseInt(i.date.split('-')[0]) === currentYear),
+    [incomes]
+  )
+
+  const totalIncome = yearIncomes.reduce((s, i) => s + i.amount, 0)
+  const totalTax = yearIncomes.reduce((s, i) => s + calculateNPDTax(i.amount, i.isLegal), 0)
   const remaining = NPD_LIMIT - totalIncome
   const usagePercent = Math.min((totalIncome / NPD_LIMIT) * 100, 100)
   const netIncome = totalIncome - totalTax
@@ -79,16 +88,13 @@ export default function IncomeTracker() {
     return Array.from(set).sort((a, b) => a - b)
   }, [incomes])
 
-  const currentMonth = new Date().getMonth() + 1
-  const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1
-
   const thisMonthTotal = useMemo(() =>
-    incomes.filter((i) => parseInt(i.date.split('-')[1]) === currentMonth).reduce((s, i) => s + i.amount, 0),
-    [incomes, currentMonth]
+    yearIncomes.filter((i) => parseInt(i.date.split('-')[1]) === currentMonth).reduce((s, i) => s + i.amount, 0),
+    [yearIncomes, currentMonth]
   )
   const prevMonthTotal = useMemo(() =>
-    incomes.filter((i) => parseInt(i.date.split('-')[1]) === prevMonth).reduce((s, i) => s + i.amount, 0),
-    [incomes, prevMonth]
+    yearIncomes.filter((i) => parseInt(i.date.split('-')[1]) === prevMonth).reduce((s, i) => s + i.amount, 0),
+    [yearIncomes, prevMonth]
   )
   const monthDelta = prevMonthTotal > 0 ? ((thisMonthTotal - prevMonthTotal) / prevMonthTotal) * 100 : 0
 
