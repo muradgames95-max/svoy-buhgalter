@@ -46,7 +46,7 @@ export default function SignupPage() {
     })
     setLoading(false)
     if (signInRes?.ok) {
-      router.replace('/overview')
+      router.replace('/onboarding')
     } else {
       router.replace('/login')
     }

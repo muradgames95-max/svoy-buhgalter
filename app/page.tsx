@@ -58,7 +58,7 @@ const PRICING = [
     desc: 'Попробуйте без риска',
     features: ['3 вопроса AI-консультанту в месяц', 'Базовый трекер доходов', 'Дедлайн-календарь'],
     cta: 'Начать бесплатно',
-    href: '/chat',
+    href: '/signup',
     highlight: false,
   },
   {
@@ -74,7 +74,7 @@ const PRICING = [
       'Оптимизация режима',
     ],
     cta: 'Начать 7 дней бесплатно',
-    href: '/chat',
+    href: '/pricing',
     highlight: true,
   },
   {
@@ -90,7 +90,7 @@ const PRICING = [
       'Приоритетная поддержка',
     ],
     cta: 'Начать 7 дней бесплатно',
-    href: '/chat',
+    href: '/pricing',
     highlight: false,
   },
 ]
