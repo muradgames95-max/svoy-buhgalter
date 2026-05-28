@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { Bell, AlertTriangle, CheckCircle2, Filter, Mail, Loader2, CheckCircle } from 'lucide-react'
 import { DEADLINES_2026, getDaysUntil, type TaxRegime } from '@/lib/deadlines'
 import { cn } from '@/lib/utils'
+import { loadFromStorage, STORAGE_KEYS } from '@/lib/storage'
 
-const REGIMES: TaxRegime[] = ['Все', 'НПД', 'УСН', 'ИП']
+const REGIMES: TaxRegime[] = ['Все', 'НПД', 'УСН', 'ИП', 'ОСНО']
 
 const TYPE_COLORS: Record<string, string> = {
   tax: 'bg-indigo-100 text-indigo-700',
@@ -40,6 +41,11 @@ export default function DeadlineTracker() {
   const [showPast, setShowPast] = useState(false)
   const [email, setEmail] = useState('')
   const [emailStatus, setEmailStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle')
+
+  useEffect(() => {
+    const profile = loadFromStorage<{ email?: string }>(STORAGE_KEYS.PROFILE, {})
+    if (profile.email) setEmail(profile.email)
+  }, [])
 
   async function sendReminder() {
     if (!email.includes('@')) return

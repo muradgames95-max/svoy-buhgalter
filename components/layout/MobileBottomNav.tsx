@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { loadFromStorage, STORAGE_KEYS } from '@/lib/storage'
 import { DEADLINES_2026, getDaysUntil } from '@/lib/deadlines'
 
-interface Income { id: string; amount: number }
+interface Income { id: string; amount: number; date: string }
 
 const NPD_LIMIT = 2_400_000
 
@@ -33,10 +33,12 @@ export default function MobileBottomNav() {
     []
   )
 
-  const showFinanceDot = useMemo(
-    () => incomes.reduce((s, i) => s + i.amount, 0) / NPD_LIMIT > 0.75,
-    [incomes]
-  )
+  const showFinanceDot = useMemo(() => {
+    const currentYear = new Date().getFullYear()
+    return incomes
+      .filter((i) => parseInt(i.date.split('-')[0]) === currentYear)
+      .reduce((s, i) => s + i.amount, 0) / NPD_LIMIT > 0.75
+  }, [incomes])
 
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-gray-950 border-t border-white/10">

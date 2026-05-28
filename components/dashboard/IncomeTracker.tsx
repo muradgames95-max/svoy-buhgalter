@@ -52,14 +52,19 @@ export default function IncomeTracker() {
   const [nalogConnected, setNalogConnected] = useState(false)
 
   useEffect(() => {
-    setIncomes(loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, DEMO))
-    setClients(loadFromStorage<Client[]>(STORAGE_KEYS.CLIENTS, []))
+    function loadData() {
+      setIncomes(loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, DEMO))
+      setClients(loadFromStorage<Client[]>(STORAGE_KEYS.CLIENTS, []))
+    }
+    loadData()
     setHydrated(true)
     setSelectedMonth(new Date().getMonth() + 1)
     const creds = localStorage.getItem('sb_nalog_creds')
     if (creds) {
       try { setNalogConnected(!!JSON.parse(creds)?.token) } catch { /* ignore */ }
     }
+    window.addEventListener('svoy-storage-updated', loadData)
+    return () => window.removeEventListener('svoy-storage-updated', loadData)
   }, [])
 
   function updateIncomes(next: Income[]) {

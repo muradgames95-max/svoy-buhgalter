@@ -12,7 +12,7 @@ interface Message {
   content: string
 }
 
-interface Income { id: string; amount: number; isLegal: boolean; date: string; description: string }
+interface Income { id: string; amount: number; isLegal: boolean; date: string; description: string; clientName?: string }
 interface Expense { id: string; amount: number; category: string; date: string }
 interface UserProfile { name?: string; executorStatus?: string; activity?: string; inn?: string }
 
@@ -21,12 +21,20 @@ const MAX_HISTORY = 30
 function buildUserContext(): string {
   try {
     const profile = loadFromStorage<Partial<UserProfile>>(STORAGE_KEYS.PROFILE, {})
-    const incomes = loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, [])
-    const expenses = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, [])
+    const allIncomes = loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, [])
+    const allExpenses = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, [])
+
+    const currentYear = new Date().getFullYear()
+    const currentMonth = new Date().getMonth() + 1
+
+    const incomes = allIncomes.filter((i) => parseInt(i.date?.split('-')[0] ?? '0') === currentYear)
+    const expenses = allExpenses.filter((e) => parseInt(e.date?.split('-')[0] ?? '0') === currentYear)
 
     const totalIncome = incomes.reduce((s, i) => s + i.amount, 0)
+    const totalTax = incomes.reduce((s, i) => s + (i.isLegal ? Math.round(i.amount * 0.06) : Math.round(i.amount * 0.04)), 0)
     const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
-    const currentMonth = new Date().getMonth() + 1
+    const netProfit = totalIncome - totalTax - totalExpenses
+
     const thisMonthIncome = incomes
       .filter((i) => parseInt(i.date?.split('-')[1] ?? '0') === currentMonth)
       .reduce((s, i) => s + i.amount, 0)
@@ -34,18 +42,44 @@ function buildUserContext(): string {
     const NPD_LIMIT = 2_400_000
     const usagePct = totalIncome > 0 ? ((totalIncome / NPD_LIMIT) * 100).toFixed(1) : '0'
 
+    // Top clients by revenue
+    const clientMap: Record<string, number> = {}
+    incomes.forEach((i) => {
+      if (i.clientName) clientMap[i.clientName] = (clientMap[i.clientName] ?? 0) + i.amount
+    })
+    const topClients = Object.entries(clientMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([name, amt]) => `${name} (${amt.toLocaleString('ru')} руб.)`)
+
+    // Top expense categories
+    const catMap: Record<string, number> = {}
+    expenses.forEach((e) => { catMap[e.category] = (catMap[e.category] ?? 0) + e.amount })
+    const topCats = Object.entries(catMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([cat, amt]) => `${cat}: ${amt.toLocaleString('ru')} руб.`)
+
     const parts: string[] = []
     if (profile.name) parts.push(`Пользователь: ${profile.name}`)
     if (profile.executorStatus) parts.push(`Налоговый режим: ${profile.executorStatus}`)
     if (profile.activity) parts.push(`Вид деятельности: ${profile.activity}`)
     if (totalIncome > 0) {
-      parts.push(`Доходы за 2026 год: ${totalIncome.toLocaleString('ru')} руб.`)
+      parts.push(`Доходы за ${currentYear} год: ${totalIncome.toLocaleString('ru')} руб.`)
+      parts.push(`Налог НПД начислен: ${totalTax.toLocaleString('ru')} руб.`)
       parts.push(`Доходы за текущий месяц: ${thisMonthIncome.toLocaleString('ru')} руб.`)
-      parts.push(`Использование лимита НПД: ${usagePct}% (лимит 2 400 000 руб.)`)
+      const isNpd = !profile.executorStatus || profile.executorStatus.toLowerCase().includes('нпд') || profile.executorStatus.toLowerCase().includes('самозанят')
+      if (isNpd) parts.push(`Использование лимита НПД: ${usagePct}% из 2 400 000 руб.`)
     }
     if (totalExpenses > 0) {
-      parts.push(`Расходы за 2026 год: ${totalExpenses.toLocaleString('ru')} руб.`)
-      parts.push(`Чистая прибыль: ${(totalIncome - totalExpenses).toLocaleString('ru')} руб.`)
+      parts.push(`Расходы за ${currentYear} год: ${totalExpenses.toLocaleString('ru')} руб.`)
+      parts.push(`Чистая прибыль (доход − налог − расходы): ${netProfit.toLocaleString('ru')} руб.`)
+    }
+    if (topClients.length > 0) {
+      parts.push(`Топ клиентов: ${topClients.join(', ')}`)
+    }
+    if (topCats.length > 0) {
+      parts.push(`Топ категорий расходов: ${topCats.join(', ')}`)
     }
     if (parts.length === 0) return ''
     return `\n\n## Данные пользователя (используй для персонализации ответов)\n${parts.join('\n')}`

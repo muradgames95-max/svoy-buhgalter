@@ -52,13 +52,18 @@ export default function OverviewPage() {
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    setIncomes(loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, []))
-    setExpenses(loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []))
-    setProfile(loadFromStorage<UserProfile>(STORAGE_KEYS.PROFILE, {}))
-    const g = loadFromStorage<number>(STORAGE_KEYS.MONTHLY_GOAL, 0)
-    setMonthlyGoal(g)
-    setGoalInput(g > 0 ? String(g) : '')
-    setHydrated(true)
+    function loadData() {
+      setIncomes(loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, []))
+      setExpenses(loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []))
+      setProfile(loadFromStorage<UserProfile>(STORAGE_KEYS.PROFILE, {}))
+      const g = loadFromStorage<number>(STORAGE_KEYS.MONTHLY_GOAL, 0)
+      setMonthlyGoal(g)
+      setGoalInput(g > 0 ? String(g) : '')
+      setHydrated(true)
+    }
+    loadData()
+    window.addEventListener('svoy-storage-updated', loadData)
+    return () => window.removeEventListener('svoy-storage-updated', loadData)
   }, [])
 
   function saveGoal() {
@@ -132,7 +137,7 @@ export default function OverviewPage() {
     yearExpenses.forEach((e) => { map[e.category] = (map[e.category] ?? 0) + e.amount })
     const sorted = Object.entries(map).sort((a, b) => b[1] - a[1])
     return sorted[0] ?? null
-  }, [expenses])
+  }, [yearExpenses])
 
   const nextDeadline = useMemo(() =>
     DEADLINES_2026
@@ -380,12 +385,16 @@ export default function OverviewPage() {
           {/* Year stats */}
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">Итоги {currentYear} года</p>
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: 'Доходы', value: formatRubles(totalIncome), color: 'text-indigo-600' },
-                { label: 'Расходы', value: formatRubles(totalExpenses), color: 'text-rose-600' },
-                { label: 'Налоги', value: formatRubles(totalTax), color: 'text-amber-600' },
-              ].map(({ label, value, color }) => (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {(() => {
+                const netProfit = totalIncome - totalTax - totalExpenses
+                return [
+                  { label: 'Доходы', value: formatRubles(totalIncome), color: 'text-indigo-600' },
+                  { label: 'Расходы', value: formatRubles(totalExpenses), color: 'text-rose-600' },
+                  { label: 'Налоги', value: formatRubles(totalTax), color: 'text-amber-600' },
+                  { label: 'На руки', value: formatRubles(netProfit), color: netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600' },
+                ]
+              })().map(({ label, value, color }) => (
                 <div key={label} className="text-center">
                   <p className={cn('text-lg font-bold leading-none', color)}>{value}</p>
                   <p className="text-[11px] text-gray-400 mt-1">{label}</p>

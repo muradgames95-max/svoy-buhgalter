@@ -11,6 +11,7 @@ const COLOR_MAP: Record<string, { bg: string; border: string; badge: string; gra
   indigo:  { bg: 'bg-indigo-50',  border: 'border-indigo-200',  badge: 'bg-indigo-100 text-indigo-700',  grad: 'from-indigo-500 to-violet-500' },
   violet:  { bg: 'bg-violet-50',  border: 'border-violet-200',  badge: 'bg-violet-100 text-violet-700',  grad: 'from-violet-500 to-purple-500' },
   rose:    { bg: 'bg-rose-50',    border: 'border-rose-200',    badge: 'bg-rose-100 text-rose-700',      grad: 'from-rose-500 to-pink-500'   },
+  sky:     { bg: 'bg-sky-50',     border: 'border-sky-200',     badge: 'bg-sky-100 text-sky-700',        grad: 'from-sky-500 to-cyan-500'    },
 }
 
 function fmt(n: number) { return Math.round(n / 1000) + 'к' }

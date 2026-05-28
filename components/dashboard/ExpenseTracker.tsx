@@ -54,8 +54,13 @@ export default function ExpenseTracker({ totalIncome }: { totalIncome: number })
   const [editRecurring, setEditRecurring] = useState(false)
 
   useEffect(() => {
-    setExpenses(loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, DEMO))
+    function loadData() {
+      setExpenses(loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, DEMO))
+    }
+    loadData()
     setHydrated(true)
+    window.addEventListener('svoy-storage-updated', loadData)
+    return () => window.removeEventListener('svoy-storage-updated', loadData)
   }, [])
 
   function save(next: Expense[]) {

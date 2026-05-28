@@ -18,8 +18,8 @@ export function calcAllRegimes(income: number, expenses: number, hasEmployees: b
   const contrib1pct = Math.min(Math.max((income - 300_000) * 0.01, 0), 277_571)
   const totalContrib = FIXED_CONTRIBUTIONS_2026 + contrib1pct
 
-  // НПД (самозанятый)
-  const npdTax = Math.round(income * 0.06) // среднее между 4% и 6%
+  // НПД (самозанятый) — среднее 5% (50% физлица × 4% + 50% юрлица × 6%)
+  const npdTax = Math.round(income * 0.05)
   const npdAvailable = income <= 2_400_000 && !hasEmployees
   const npd: TaxScenario = {
     regime: 'НПД (самозанятый)',
@@ -40,6 +40,7 @@ export function calcAllRegimes(income: number, expenses: number, hasEmployees: b
       'Нет страховых взносов',
       'Нет отчётности — только чеки',
       `Лимит: 2,4 млн руб./год`,
+      'Расчёт: среднее ~5% (50/50 физлица/юрлица)',
     ],
     color: 'emerald',
   }
@@ -113,7 +114,28 @@ export function calcAllRegimes(income: number, expenses: number, hasEmployees: b
     color: 'rose',
   }
 
-  return [npd, usnIncome, usnDiff, osno].sort((a, b) => {
+  // АУСН — доступен в Москве, МО, Калужской обл., Татарстане
+  const ausnTax = Math.round(income * 0.08) // 8% доходы (нет взносов, нет деклараций)
+  const ausn: TaxScenario = {
+    regime: 'АУСН «Доходы» 8%',
+    shortName: 'АУСН',
+    tax: ausnTax,
+    contributions: 0,
+    total: ausnTax,
+    effectiveRate: income > 0 ? (ausnTax / income) * 100 : 0,
+    available: income <= 60_000_000,
+    reason: income > 60_000_000 ? 'Доход превышает лимит АУСН 60 млн руб.' : undefined,
+    details: [
+      '8% с доходов (нет взносов)',
+      'Доступен: Москва, МО, Калужская, Татарстан',
+      'Нет деклараций, нет страховых взносов',
+      'Выгоден при отсутствии расходов',
+      `Лимит: 60 млн руб./год`,
+    ],
+    color: 'sky',
+  }
+
+  return [npd, usnIncome, usnDiff, ausn, osno].sort((a, b) => {
     if (!a.available && b.available) return 1
     if (a.available && !b.available) return -1
     return a.total - b.total
