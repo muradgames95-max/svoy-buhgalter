@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 
 const PUBLIC_PATHS = ['/login', '/signup']
 
-export default auth((req) => {
+export const proxy = auth((req) => {
   const { nextUrl } = req
   const isLoggedIn = !!req.auth?.user
 
