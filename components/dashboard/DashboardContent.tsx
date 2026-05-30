@@ -23,15 +23,15 @@ function DonutChart({ data, total, colors }: { data: [string, number][]; total: 
   const cx = size / 2
   const cy = size / 2
 
-  let offset = 0
-  const slices = data.map(([cat, amt], idx) => {
+  const baseSlices = data.map(([cat, amt], idx) => {
     const pct = total > 0 ? amt / total : 0
     const dash = pct * circ
-    const gap = circ - dash
-    const slice = { cat, amt, pct, dash, gap, offset, color: colors[idx % colors.length] }
-    offset += dash
-    return slice
+    return { cat, amt, pct, dash, gap: circ - dash, color: colors[idx % colors.length] }
   })
+  const slices = baseSlices.map((s, idx) => ({
+    ...s,
+    offset: baseSlices.slice(0, idx).reduce((sum, p) => sum + p.dash, 0),
+  }))
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-5">

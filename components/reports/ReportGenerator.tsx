@@ -156,14 +156,14 @@ export default function ReportGenerator() {
     URL.revokeObjectURL(url)
   }
 
-  const expenseByCategory = useMemo(() => {
-    const map: Record<string, number> = {}
-    for (const e of filtered.expenses) {
-      const cat = e.category ?? 'Прочее'
-      map[cat] = (map[cat] ?? 0) + e.amount
-    }
-    return Object.entries(map).sort((a, b) => b[1] - a[1])
-  }, [filtered.expenses])
+  const expenseByCategory = useMemo(() =>
+    Object.entries(
+      filtered.expenses.reduce<Record<string, number>>((acc, e) => {
+        const cat = e.category ?? 'Прочее'
+        return { ...acc, [cat]: (acc[cat] ?? 0) + e.amount }
+      }, {})
+    ).sort((a, b) => b[1] - a[1]),
+  [filtered.expenses])
 
   return (
     <div className="space-y-5">

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
 import { AlertTriangle, RefreshCw, ArrowLeft } from 'lucide-react'
 
 export default function Error({ error, reset }: { error: Error; reset: () => void }) {
@@ -26,13 +27,13 @@ export default function Error({ error, reset }: { error: Error; reset: () => voi
             <RefreshCw className="w-4 h-4" />
             Попробовать снова
           </button>
-          <a
+          <Link
             href="/"
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             На главную
-          </a>
+          </Link>
         </div>
       </div>
     </div>

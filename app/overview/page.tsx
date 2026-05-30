@@ -251,6 +251,15 @@ export default function OverviewPage() {
     []
   )
 
+  const confettiItems = useMemo(() =>
+    Array.from({ length: 40 }).map((_, i) => ({
+      left: `${(i * 2.5 + 7) % 100}%`,
+      top: `${(i * 1.7 + 11) % 60}%`,
+      delay: `${(i * 0.02) % 0.8}s`,
+      duration: `${0.5 + (i * 0.015) % 0.6}s`,
+      color: ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#ef4444'][i % 6],
+    })), [])
+
   const taxDueLabel = `28 ${MONTH_SHORT[currentMonth % 12]}`
 
   const firstName = profile.name ? profile.name.split(' ')[0] : null
@@ -262,16 +271,16 @@ export default function OverviewPage() {
     <AppShell>
       {showConfetti && (
         <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-          {Array.from({ length: 40 }).map((_, i) => (
+          {confettiItems.map((item, i) => (
             <div
               key={i}
               className="absolute w-2 h-2 rounded-sm animate-bounce"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 60}%`,
-                background: ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#ef4444'][i % 6],
-                animationDelay: `${Math.random() * 0.8}s`,
-                animationDuration: `${0.5 + Math.random() * 0.6}s`,
+                left: item.left,
+                top: item.top,
+                background: item.color,
+                animationDelay: item.delay,
+                animationDuration: item.duration,
                 opacity: 0.85,
               }}
             />

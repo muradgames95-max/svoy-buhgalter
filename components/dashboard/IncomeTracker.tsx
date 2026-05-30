@@ -206,7 +206,7 @@ export default function IncomeTracker() {
     setTimeout(() => setReceiptState((s) => { const n = { ...s }; delete n[income.id]; return n }), 3000)
   }
 
-  function useAsTemplate(income: Income) {
+  function applyAsTemplate(income: Income) {
     const client = clients.find((c) => c.id === income.clientId)
     setForm({
       description: income.description,
@@ -591,7 +591,7 @@ export default function IncomeTracker() {
                   >
                     <Clock className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => useAsTemplate(income)} title="Добавить снова" className="p-1.5 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors">
+                  <button onClick={() => applyAsTemplate(income)} title="Добавить снова" className="p-1.5 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors">
                     <Copy className="w-3.5 h-3.5" />
                   </button>
                   {nalogConnected && (
