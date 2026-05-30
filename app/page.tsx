@@ -202,6 +202,54 @@ const HOW_IT_WORKS = [
   },
 ]
 
+const ONLY_US = [
+  {
+    emoji: '🏥',
+    tag: 'Новинка 2026',
+    title: 'Калькулятор больничного',
+    desc: 'С 2026 года самозанятые могут застраховаться в СФР. Мы первые, кто сделал калькулятор — выгодно ли вам подключаться.',
+  },
+  {
+    emoji: '📅',
+    tag: 'Авто-напоминание',
+    title: 'Письмо об уплате НПД',
+    desc: '23-го числа присылаем письмо с расчётной суммой налога за прошлый месяц. Успеете оплатить до 28-го — без пени.',
+  },
+  {
+    emoji: '🤖',
+    tag: 'Актуально',
+    title: 'AI знает закон 2026',
+    desc: 'НДС 22%, прогрессивный НДФЛ 13–22%, новые лимиты. Точные ответы по реформе — в отличие от обычного ChatGPT с устаревшей базой.',
+  },
+  {
+    emoji: '📄',
+    tag: 'Быстро',
+    title: 'Счёт клиенту за 1 мин',
+    desc: 'Профессиональный PDF со всеми реквизитами. Отправьте клиенту ссылку — без Word, без почты, прямо из телефона.',
+  },
+]
+
+type CVal = true | false | 'partial'
+
+interface CRow { label: string; us: CVal; moi: CVal; gpt: CVal; elba: CVal }
+
+const COMPARISON_ROWS: CRow[] = [
+  { label: 'AI-консультант по налогам РФ',   us: true,  moi: false,     gpt: 'partial', elba: false     },
+  { label: 'Трекер доходов и расходов',       us: true,  moi: false,     gpt: false,     elba: true      },
+  { label: 'Счета, договоры, акты — PDF',     us: true,  moi: false,     gpt: false,     elba: true      },
+  { label: 'Дедлайны и email-уведомления',    us: true,  moi: false,     gpt: false,     elba: 'partial' },
+  { label: 'Напоминание об уплате НПД',       us: true,  moi: false,     gpt: false,     elba: false     },
+  { label: 'Калькулятор больничного 2026',    us: true,  moi: false,     gpt: false,     elba: false     },
+  { label: 'Оптимизация налогового режима',   us: true,  moi: false,     gpt: 'partial', elba: 'partial' },
+  { label: 'Без привязки к банку',            us: true,  moi: true,      gpt: true,      elba: true      },
+]
+
+function CellIcon({ v }: { v: CVal }) {
+  if (v === true) return <span className="text-emerald-500 text-lg font-black leading-none">✓</span>
+  if (v === 'partial') return <span className="text-amber-500 text-xs font-semibold">частично</span>
+  return <span className="text-gray-300 text-lg leading-none">✗</span>
+}
+
 const REVIEWS = [
   { name: 'Анна С.', role: 'Дизайнер, НПД', text: 'Наконец-то понятно объяснили про НДС и мой лимит. Раньше боялась ошибиться.', stars: 5 },
   { name: 'Дмитрий К.', role: 'Разработчик, ИП УСН', text: 'Прогноз налога на год — это огонь. Теперь знаю сколько откладывать.', stars: 5 },
@@ -398,6 +446,90 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Only us */}
+      <section className="py-20 bg-gray-950">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <p className="text-indigo-400 text-xs font-bold uppercase tracking-widest mb-3">Только в Своём Бухгалтере</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">Фичи, которых нет у конкурентов</h2>
+            <p className="text-gray-400 max-w-lg mx-auto">Мы не просто скопировали рынок — добавили то, чего не хватало самозанятым.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {ONLY_US.map(({ emoji, tag, title, desc }) => (
+              <div key={title} className="bg-gray-900 rounded-2xl p-5 border border-gray-800 hover:border-indigo-700 transition-colors">
+                <div className="flex items-start justify-between mb-4">
+                  <span className="text-2xl">{emoji}</span>
+                  <span className="text-[10px] font-bold bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded-full whitespace-nowrap">{tag}</span>
+                </div>
+                <h3 className="font-bold text-white text-sm leading-snug mb-2">{title}</h3>
+                <p className="text-gray-400 text-xs leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Comparison */}
+      <section className="py-20 bg-white">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <p className="text-indigo-600 text-xs font-bold uppercase tracking-widest mb-3">Сравнение</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Один сервис вместо нескольких</h2>
+            <p className="text-gray-500 max-w-lg mx-auto">Конкуренты закрывают одну задачу. Свой Бухгалтер — весь финансовый учёт самозанятого.</p>
+          </div>
+
+          <div className="overflow-x-auto -mx-4 px-4">
+            <table className="w-full min-w-[580px] text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="text-left pb-4 pr-6 w-[38%]" />
+                  <th className="pb-4 px-3 text-center">
+                    <div className="bg-indigo-600 text-white rounded-2xl px-4 py-3 shadow-lg shadow-indigo-200">
+                      <p className="font-bold text-sm">Свой Бухгалтер</p>
+                      <p className="text-indigo-200 text-xs mt-0.5">₽299/мес</p>
+                    </div>
+                  </th>
+                  <th className="pb-4 px-3 text-center">
+                    <div className="rounded-2xl px-4 py-3 border border-gray-100 bg-gray-50">
+                      <p className="font-semibold text-gray-700 text-xs">Мой налог</p>
+                      <p className="text-gray-400 text-xs mt-0.5">Бесплатно</p>
+                    </div>
+                  </th>
+                  <th className="pb-4 px-3 text-center">
+                    <div className="rounded-2xl px-4 py-3 border border-gray-100 bg-gray-50">
+                      <p className="font-semibold text-gray-700 text-xs">ChatGPT</p>
+                      <p className="text-gray-400 text-xs mt-0.5">~₽1 900/мес</p>
+                    </div>
+                  </th>
+                  <th className="pb-4 px-3 text-center">
+                    <div className="rounded-2xl px-4 py-3 border border-gray-100 bg-gray-50">
+                      <p className="font-semibold text-gray-700 text-xs">Контур.Эльба</p>
+                      <p className="text-gray-400 text-xs mt-0.5">от ₽2 190/мес</p>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARISON_ROWS.map(({ label, us, moi, gpt, elba }) => (
+                  <tr key={label} className="border-t border-gray-100 hover:bg-gray-50/50 transition-colors">
+                    <td className="py-3.5 pr-6 text-gray-600 text-sm font-medium">{label}</td>
+                    <td className="py-3.5 px-3 text-center bg-indigo-50/40">
+                      <CellIcon v={us} />
+                    </td>
+                    <td className="py-3.5 px-3 text-center"><CellIcon v={moi} /></td>
+                    <td className="py-3.5 px-3 text-center"><CellIcon v={gpt} /></td>
+                    <td className="py-3.5 px-3 text-center"><CellIcon v={elba} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-center text-gray-400 text-xs mt-6">
+            Данные актуальны на май 2026 г. &nbsp;«частично» — функция реализована ограниченно.
+          </p>
         </div>
       </section>
 
