@@ -18,8 +18,9 @@ export default function QuickAdd() {
   const [saved, setSaved] = useState(false)
   const [clients, setClients] = useState<Client[]>([])
 
-  const [incomeForm, setIncomeForm] = useState({ description: '', amount: '', isLegal: false, clientId: '' })
-  const [expenseForm, setExpenseForm] = useState({ description: '', amount: '', category: 'Прочее' })
+  const today = new Date().toISOString().split('T')[0]
+  const [incomeForm, setIncomeForm] = useState({ description: '', amount: '', isLegal: false, clientId: '', date: today })
+  const [expenseForm, setExpenseForm] = useState({ description: '', amount: '', category: 'Прочее', date: today })
 
   const descRef = useRef<HTMLInputElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -45,8 +46,8 @@ export default function QuickAdd() {
   function close() {
     setMode(null)
     setSaved(false)
-    setIncomeForm({ description: '', amount: '', isLegal: false, clientId: '' })
-    setExpenseForm({ description: '', amount: '', category: 'Прочее' })
+    setIncomeForm({ description: '', amount: '', isLegal: false, clientId: '', date: today })
+    setExpenseForm({ description: '', amount: '', category: 'Прочее', date: today })
   }
 
   function saveIncome() {
@@ -59,7 +60,7 @@ export default function QuickAdd() {
       description: incomeForm.description.trim(),
       amount,
       isLegal: incomeForm.isLegal,
-      date: new Date().toISOString().split('T')[0],
+      date: incomeForm.date || new Date().toISOString().split('T')[0],
       clientId: client?.id,
       clientName: client?.name,
     }]
@@ -79,7 +80,7 @@ export default function QuickAdd() {
       description: expenseForm.description.trim(),
       amount,
       category: expenseForm.category,
-      date: new Date().toISOString().split('T')[0],
+      date: expenseForm.date || new Date().toISOString().split('T')[0],
     }]
     saveToStorage(STORAGE_KEYS.EXPENSES, next)
     window.dispatchEvent(new Event('svoy-storage-updated'))
@@ -205,6 +206,12 @@ export default function QuickAdd() {
                     <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   </div>
                 )}
+                <input
+                  type="date"
+                  value={incomeForm.date}
+                  onChange={(e) => setIncomeForm({ ...incomeForm, date: e.target.value })}
+                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white text-gray-700"
+                />
                 <button
                   onClick={saveIncome}
                   disabled={!incomeForm.description.trim() || !incomeForm.amount}
@@ -248,6 +255,12 @@ export default function QuickAdd() {
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                   </div>
                 </div>
+                <input
+                  type="date"
+                  value={expenseForm.date}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })}
+                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white text-gray-700"
+                />
                 <button
                   onClick={saveExpense}
                   disabled={!expenseForm.description.trim() || !expenseForm.amount}

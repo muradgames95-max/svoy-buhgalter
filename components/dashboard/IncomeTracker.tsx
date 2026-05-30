@@ -51,6 +51,7 @@ export default function IncomeTracker() {
   const [editIsLegal, setEditIsLegal] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid'>('all')
   const [receiptState, setReceiptState] = useState<Record<string, 'loading' | 'ok' | 'error'>>({})
   const [nalogConnected, setNalogConnected] = useState(false)
   const [importError, setImportError] = useState('')
@@ -121,9 +122,12 @@ export default function IncomeTracker() {
     return incomes.filter((i) => {
       const matchMonth = selectedMonth === null || parseInt(i.date.split('-')[1]) === selectedMonth
       const matchSearch = !search || i.description.toLowerCase().includes(search.toLowerCase())
-      return matchMonth && matchSearch
+      const matchStatus = statusFilter === 'all' || (statusFilter === 'pending' ? i.status === 'pending' : i.status !== 'pending')
+      return matchMonth && matchSearch && matchStatus
     })
-  }, [incomes, selectedMonth, search])
+  }, [incomes, selectedMonth, search, statusFilter])
+
+  const pendingCount = useMemo(() => incomes.filter((i) => i.status === 'pending').length, [incomes])
 
   function handleShowForm() {
     if (userPlan === 'free' && incomes.length >= FREE_ENTRY_LIMIT) {
@@ -436,6 +440,33 @@ export default function IncomeTracker() {
                   )}
                 >
                   {MONTH_SHORT[m - 1]}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-1.5">
+              {(['all', 'paid', 'pending'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1',
+                    statusFilter === s
+                      ? s === 'pending' ? 'bg-amber-500 text-white' : 'bg-gray-800 text-white'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  )}
+                >
+                  {s === 'all' && 'Все статусы'}
+                  {s === 'paid' && 'Оплачено'}
+                  {s === 'pending' && (
+                    <>
+                      Ожидает
+                      {pendingCount > 0 && (
+                        <span className={cn('rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold',
+                          statusFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-500 text-white'
+                        )}>{pendingCount}</span>
+                      )}
+                    </>
+                  )}
                 </button>
               ))}
             </div>

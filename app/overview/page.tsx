@@ -6,7 +6,7 @@ import {
   TrendingUp, MessageCircle, FileText, Calculator,
   Plus, ArrowRight, Wallet, CalendarClock, Sparkles, Target, Pencil, Check,
   ArrowUp, ArrowDown, Receipt, ShoppingBag, AlertCircle, StickyNote, X, BookOpen,
-  RefreshCw, DollarSign,
+  RefreshCw, DollarSign, Clock,
 } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
 import NpdTaxSchedule from '@/components/tax/NpdTaxSchedule'
@@ -21,7 +21,7 @@ import { DEADLINES_2026, getDaysUntil } from '@/lib/deadlines'
 import { calculateNPDTax, formatRubles } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
-interface Income { id: string; amount: number; isLegal: boolean; date: string; description: string; clientName?: string }
+interface Income { id: string; amount: number; isLegal: boolean; date: string; description: string; clientName?: string; status?: 'paid' | 'pending' }
 interface Expense { id: string; amount: number; category: string; date: string }
 interface UserProfile { name?: string; executorStatus?: string; activity?: string }
 
@@ -204,6 +204,9 @@ export default function OverviewPage() {
     [...yearIncomes].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
     [yearIncomes]
   )
+
+  const pendingIncomes = useMemo(() => incomes.filter((i) => i.status === 'pending'), [incomes])
+  const pendingTotal = useMemo(() => pendingIncomes.reduce((s, i) => s + i.amount, 0), [pendingIncomes])
 
   // Smart insights
   const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1
@@ -391,6 +394,29 @@ export default function OverviewPage() {
 
           {/* Tax payment reminder banner — shows 23rd–28th of month */}
           <TaxReminderBanner />
+
+          {/* Pending payments card */}
+          {pendingIncomes.length > 0 && (
+            <Link href="/dashboard" className="block bg-amber-50 rounded-3xl border border-amber-200/60 shadow-sm p-5 hover:bg-amber-100/60 transition-colors">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-amber-900 text-sm">Ожидает оплаты</p>
+                  <p className="text-xs text-amber-700/70 mt-0.5">
+                    {pendingIncomes.length} {pendingIncomes.length === 1 ? 'запись' : pendingIncomes.length < 5 ? 'записи' : 'записей'}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-black text-amber-700 text-lg leading-none">{formatRubles(pendingTotal)}</p>
+                  <p className="text-[11px] text-amber-500 mt-0.5 flex items-center justify-end gap-0.5">
+                    Подробнее <ArrowRight className="w-3 h-3" />
+                  </p>
+                </div>
+              </div>
+            </Link>
+          )}
 
           {/* Monthly goal setter */}
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
