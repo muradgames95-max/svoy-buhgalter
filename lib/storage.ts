@@ -25,6 +25,7 @@ export const STORAGE_KEYS = {
   CLIENTS: 'sb_clients',
   PROFILE: 'sb_profile',
   DOCUMENTS: 'sb_documents',
+  INVOICES: 'sb_invoices',
   SETTINGS: 'sb_settings',
   ONBOARDING_DONE: 'sb_onboarding_done',
   MONTHLY_GOAL: 'sb_monthly_goal',
@@ -41,5 +42,6 @@ export const ARRAY_STORAGE_KEYS: ReadonlySet<string> = new Set([
   'sb_expenses',
   'sb_clients',
   'sb_documents',
+  'sb_invoices',
   'sb_chat_history',
 ])

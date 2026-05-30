@@ -8,7 +8,7 @@ import { useSession, signOut } from 'next-auth/react'
 import {
   MessageCircle, TrendingUp, FileText, Bell, CreditCard,
   Home, Calculator, Sparkles, Users, LogOut, UserCircle, BarChart3,
-  Sun, Moon,
+  Sun, Moon, Receipt,
 } from 'lucide-react'
 const PLAN_LABELS: Record<string, string> = { free: 'Бесплатно', self: 'Самозанятый', ip: 'ИП / ООО' }
 import { cn } from '@/lib/utils'
@@ -82,6 +82,7 @@ export default function Sidebar() {
     { href: '/dashboard', icon: TrendingUp, label: 'Финансы', dot: showFinancesAlert ? 'yellow' as const : null, badge: null },
     { href: '/clients', icon: Users, label: 'Клиенты' },
     { href: '/calculator', icon: Calculator, label: 'Калькулятор' },
+    { href: '/invoices', icon: Receipt, label: 'Счета' },
     { href: '/documents', icon: FileText, label: 'Документы' },
     { href: '/reports', icon: BarChart3, label: 'Отчёты' },
     { href: '/deadlines', icon: Bell, label: 'Дедлайны', badge: urgentDeadlineCount > 0 ? urgentDeadlineCount : null },
