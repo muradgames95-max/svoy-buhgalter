@@ -6,7 +6,7 @@ import {
   TrendingUp, MessageCircle, FileText, Calculator,
   Plus, ArrowRight, Wallet, CalendarClock, Sparkles, Target, Pencil, Check,
   ArrowUp, ArrowDown, Receipt, ShoppingBag, AlertCircle, StickyNote, X, BookOpen,
-  RefreshCw, DollarSign, Clock,
+  RefreshCw, DollarSign, Clock, UserCircle,
 } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
 import NpdTaxSchedule from '@/components/tax/NpdTaxSchedule'
@@ -246,6 +246,13 @@ export default function OverviewPage() {
     const sorted = Object.entries(map).sort((a, b) => b[1] - a[1])
     return sorted[0] ?? null
   }, [yearExpenses])
+
+  const topClient = useMemo(() => {
+    const map: Record<string, number> = {}
+    yearIncomes.forEach((i) => { if (i.clientName) map[i.clientName] = (map[i.clientName] ?? 0) + i.amount })
+    const sorted = Object.entries(map).sort((a, b) => b[1] - a[1])
+    return sorted[0] ?? null
+  }, [yearIncomes])
 
   const nextDeadline = useMemo(() =>
     DEADLINES_2026
@@ -752,7 +759,7 @@ export default function OverviewPage() {
           />
 
           {/* Smart Insights */}
-          {(incomeMomentum !== null || thisMonthTax > 0 || topExpenseCategory || nextDeadline) && (
+          {(incomeMomentum !== null || thisMonthTax > 0 || topExpenseCategory || nextDeadline || topClient) && (
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3 px-0.5">Инсайты</p>
               <div className="grid grid-cols-2 gap-3">
@@ -818,6 +825,20 @@ export default function OverviewPage() {
                       {nextDeadline.days === 0 ? 'сегодня' : `${nextDeadline.days} дн.`}
                     </p>
                     <p className="text-[11px] text-gray-400 mt-1 truncate">{nextDeadline.title}</p>
+                  </div>
+                )}
+
+                {/* Top client */}
+                {topClient && (
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <div className="w-6 h-6 rounded-lg bg-sky-100 flex items-center justify-center">
+                        <UserCircle className="w-3.5 h-3.5 text-sky-600" />
+                      </div>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Топ клиент</span>
+                    </div>
+                    <p className="text-sm font-bold leading-tight text-gray-900 truncate">{topClient[0]}</p>
+                    <p className="text-[11px] text-gray-400 mt-1">{formatRubles(topClient[1])}</p>
                   </div>
                 )}
 

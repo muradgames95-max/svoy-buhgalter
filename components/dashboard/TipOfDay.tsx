@@ -1,5 +1,8 @@
 'use client'
 
+import { useState } from 'react'
+import { Shuffle } from 'lucide-react'
+
 const TIPS = [
   { emoji: '💡', category: 'НПД', text: 'Самозанятые не платят НДС при любом обороте. Это одно из главных преимуществ НПД перед ИП на ОСНО.' },
   { emoji: '📅', category: 'Сроки', text: 'Налог НПД нужно оплатить до 28-го числа следующего месяца. Чек выдаётся через приложение «Мой налог».' },
@@ -28,16 +31,21 @@ const TIPS = [
   { emoji: '💬', category: 'Общение', text: 'Всегда сообщайте клиенту свой статус (НПД/ИП) до начала работы — это влияет на их налоговую нагрузку.' },
 ]
 
-function getTodayTip() {
+function getDayTipIndex() {
   const start = new Date(new Date().getFullYear(), 0, 0).getTime()
-  const dayOfYear = Math.floor((Date.now() - start) / 86_400_000)
-  return TIPS[dayOfYear % TIPS.length]
+  return Math.floor((Date.now() - start) / 86_400_000) % TIPS.length
 }
 
-const TODAY_TIP = getTodayTip()
-
 export default function TipOfDay() {
-  const tip = TODAY_TIP
+  const [idx, setIdx] = useState(getDayTipIndex)
+  const [spinning, setSpinning] = useState(false)
+  const tip = TIPS[idx]
+
+  function shuffle() {
+    setSpinning(true)
+    setIdx((prev) => (prev + 1) % TIPS.length)
+    setTimeout(() => setSpinning(false), 400)
+  }
 
   return (
     <div className="bg-gradient-to-br from-violet-50 via-indigo-50 to-blue-50 rounded-3xl border border-violet-100 p-5">
@@ -53,6 +61,13 @@ export default function TipOfDay() {
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-600 font-semibold">
               {tip.category}
             </span>
+            <button
+              onClick={shuffle}
+              className="ml-auto p-1.5 rounded-lg text-violet-300 hover:text-violet-600 hover:bg-violet-100 transition-colors"
+              title="Следующий совет"
+            >
+              <Shuffle className={`w-3 h-3 transition-transform duration-400 ${spinning ? 'rotate-180' : ''}`} />
+            </button>
           </div>
           <p className="text-sm text-gray-700 leading-relaxed">{tip.text}</p>
         </div>

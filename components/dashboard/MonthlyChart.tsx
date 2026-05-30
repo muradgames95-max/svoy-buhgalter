@@ -143,20 +143,30 @@ export default function MonthlyChart({ incomes, expenses }: MonthlyChartProps) {
       </div>
 
       {/* Bottom stats */}
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
-        <div>
-          <p className="text-[11px] text-gray-400">Этот месяц</p>
-          <p className="text-sm font-bold text-indigo-600">{totalIncome > 0 ? formatRubles(totalIncome) : '—'}</p>
+      <div className="mt-3 pt-3 border-t border-gray-50 space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] text-gray-400">Доходы</p>
+            <p className="text-sm font-bold text-indigo-600">{totalIncome > 0 ? formatRubles(totalIncome) : '—'}</p>
+          </div>
+          {trend !== null && (
+            <div className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl ${trend >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+              {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(0)}%
+            </div>
+          )}
+          <div className="text-right">
+            <p className="text-[11px] text-gray-400">Расходы</p>
+            <p className="text-sm font-bold text-rose-500">{data[5].expense > 0 ? formatRubles(data[5].expense) : '—'}</p>
+          </div>
         </div>
-        {trend !== null && (
-          <div className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl ${trend >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-            {trend >= 0 ? '↑' : '↓'} {Math.abs(trend).toFixed(0)}% к пред. мес.
+        {(totalIncome > 0 || data[5].expense > 0) && (
+          <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2">
+            <p className="text-[11px] text-gray-400">Чистая прибыль</p>
+            <p className={`text-sm font-bold ${totalIncome - data[5].expense >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {formatRubles(totalIncome - data[5].expense)}
+            </p>
           </div>
         )}
-        <div className="text-right">
-          <p className="text-[11px] text-gray-400">Расходы</p>
-          <p className="text-sm font-bold text-rose-500">{data[5].expense > 0 ? formatRubles(data[5].expense) : '—'}</p>
-        </div>
       </div>
     </div>
   )

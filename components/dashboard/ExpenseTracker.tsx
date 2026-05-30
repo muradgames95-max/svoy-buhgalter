@@ -48,7 +48,8 @@ export default function ExpenseTracker({ totalIncome }: { totalIncome: number })
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [hydrated, setHydrated] = useState(false)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ description: '', amount: '', category: 'Прочее', recurring: false })
+  const today = new Date().toISOString().split('T')[0]
+  const [form, setForm] = useState({ description: '', amount: '', category: 'Прочее', recurring: false, date: today })
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDesc, setEditDesc] = useState('')
   const [editAmount, setEditAmount] = useState('')
@@ -140,9 +141,9 @@ export default function ExpenseTracker({ totalIncome }: { totalIncome: number })
       amount,
       category: form.category,
       recurring: form.recurring,
-      date: new Date().toISOString().split('T')[0],
+      date: form.date || new Date().toISOString().split('T')[0],
     }])
-    setForm({ description: '', amount: '', category: 'Прочее', recurring: false })
+    setForm({ description: '', amount: '', category: 'Прочее', recurring: false, date: today })
     setShowForm(false)
   }
 
@@ -474,10 +475,18 @@ export default function ExpenseTracker({ totalIncome }: { totalIncome: number })
                 {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
-            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input type="checkbox" checked={form.recurring} onChange={(e) => setForm({ ...form, recurring: e.target.checked })} className="rounded accent-rose-600" />
-              <span className="flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 text-rose-500" />Ежемесячный расход</span>
-            </label>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer flex-1">
+                <input type="checkbox" checked={form.recurring} onChange={(e) => setForm({ ...form, recurring: e.target.checked })} className="rounded accent-rose-600" />
+                <span className="flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 text-rose-500" />Ежемесячный расход</span>
+              </label>
+              <input
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 text-gray-700"
+              />
+            </div>
             <div className="flex gap-2">
               <button onClick={addExpense} className="flex-1 py-2.5 bg-rose-600 text-white rounded-xl text-sm font-semibold hover:bg-rose-700 transition-colors">
                 Добавить расход
