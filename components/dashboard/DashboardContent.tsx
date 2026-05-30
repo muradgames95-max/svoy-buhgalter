@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { TrendingUp, ShoppingBag, BarChart3, ArrowUp, ArrowDown, Minus, UserCircle } from 'lucide-react'
-import { cn, formatRubles } from '@/lib/utils'
+import { cn, formatRubles, calculateNPDTax } from '@/lib/utils'
 import { loadFromStorage, STORAGE_KEYS } from '@/lib/storage'
 import IncomeTracker from './IncomeTracker'
 import ExpenseTracker from './ExpenseTracker'
@@ -14,6 +14,59 @@ interface Income { id: string; amount: number; tax: number; isLegal: boolean; da
 interface Expense { id: string; amount: number; category: string; date: string; description: string }
 
 const MONTH_NAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек']
+
+function DonutChart({ data, total, colors }: { data: [string, number][]; total: number; colors: string[] }) {
+  const size = 160
+  const strokeWidth = 28
+  const r = (size - strokeWidth) / 2
+  const circ = 2 * Math.PI * r
+  const cx = size / 2
+  const cy = size / 2
+
+  let offset = 0
+  const slices = data.map(([cat, amt], idx) => {
+    const pct = total > 0 ? amt / total : 0
+    const dash = pct * circ
+    const gap = circ - dash
+    const slice = { cat, amt, pct, dash, gap, offset, color: colors[idx % colors.length] }
+    offset += dash
+    return slice
+  })
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center gap-5">
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
+        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+          {slices.map((s) => (
+            <circle
+              key={s.cat}
+              cx={cx} cy={cy} r={r}
+              fill="none"
+              stroke={s.color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${s.dash} ${s.gap}`}
+              strokeDashoffset={-s.offset}
+            />
+          ))}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-xs font-bold text-gray-900">{formatRubles(total)}</span>
+          <span className="text-[10px] text-gray-400">расходы</span>
+        </div>
+      </div>
+      <div className="flex-1 space-y-2 w-full">
+        {slices.map((s) => (
+          <div key={s.cat} className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
+            <span className="flex-1 text-xs text-gray-700 truncate">{s.cat}</span>
+            <span className="text-xs font-bold text-gray-900 shrink-0">{formatRubles(s.amt)}</span>
+            <span className="text-[10px] text-gray-400 w-8 text-right shrink-0">{(s.pct * 100).toFixed(0)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function SummaryView({ totalIncome, totalExpenses }: { totalIncome: number; totalExpenses: number }) {
   const [incomes, setIncomes] = useState<Income[]>([])
@@ -27,7 +80,7 @@ function SummaryView({ totalIncome, totalExpenses }: { totalIncome: number; tota
     setExpenses(allExpenses.filter((e) => parseInt(e.date.split('-')[0]) === currentYear))
   }, [currentYear])
 
-  const tax = incomes.reduce((s, i) => s + (i.tax ?? 0), 0)
+  const tax = incomes.reduce((s, i) => s + calculateNPDTax(i.amount, i.isLegal), 0)
   const profit = totalIncome - totalExpenses
   const netAfterTax = profit - tax
   const profitPct = totalIncome > 0 ? (profit / totalIncome) * 100 : 0
@@ -51,6 +104,7 @@ function SummaryView({ totalIncome, totalExpenses }: { totalIncome: number; tota
   }, [incomes])
 
   const CAT_COLORS = ['from-rose-500 to-pink-500','from-orange-500 to-amber-400','from-violet-500 to-purple-400','from-sky-500 to-blue-400','from-emerald-500 to-teal-400','from-fuchsia-500 to-pink-400']
+  const DONUT_COLORS = ['#f43f5e','#f97316','#8b5cf6','#0ea5e9','#10b981','#d946ef','#6366f1','#84cc16']
 
   // Monthly aggregation
   const monthlyData: Record<string, { income: number; expenses: number }> = {}
@@ -206,27 +260,11 @@ function SummaryView({ totalIncome, totalExpenses }: { totalIncome: number; tota
         </div>
       )}
 
-      {/* Expense categories */}
+      {/* Expense categories — donut chart */}
       {categoryTotals.length > 0 && (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-4">Расходы по категориям</p>
-          <div className="space-y-2.5">
-            {categoryTotals.map(([cat, amt], idx) => {
-              const pct = totalExpenses > 0 ? (amt / totalExpenses) * 100 : 0
-              const color = CAT_COLORS[idx % CAT_COLORS.length]
-              return (
-                <div key={cat}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="font-medium text-gray-700">{cat}</span>
-                    <span className="font-bold text-gray-900">{formatRubles(amt)} <span className="text-gray-400 font-normal">· {pct.toFixed(0)}%</span></span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className={`h-full bg-gradient-to-r ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <DonutChart data={categoryTotals} total={totalExpenses} colors={DONUT_COLORS} />
         </div>
       )}
 
@@ -287,6 +325,17 @@ export default function DashboardContent() {
     setTotalExpenses(yearExpenses.reduce((s, e) => s + e.amount, 0))
   }, [tab, currentYear])
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (e.key === 'n' || e.key === 'N') { setTab('income'); window.dispatchEvent(new CustomEvent('sb:open-add-income')) }
+      if (e.key === 'e' || e.key === 'E') { setTab('expenses'); window.dispatchEvent(new CustomEvent('sb:open-add-expense')) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const TABS: { id: Tab; label: string; icon: React.ElementType; active: string }[] = [
     { id: 'income', label: 'Доходы', icon: TrendingUp, active: 'bg-indigo-600 text-white shadow-sm shadow-indigo-200' },
     { id: 'expenses', label: 'Расходы', icon: ShoppingBag, active: 'bg-rose-600 text-white shadow-sm shadow-rose-200' },
@@ -295,7 +344,8 @@ export default function DashboardContent() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-1.5 flex gap-1">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-1.5 flex gap-1">
         {TABS.map(({ id, label, icon: Icon, active }) => (
           <button
             key={id}
@@ -310,6 +360,11 @@ export default function DashboardContent() {
             <span className="sm:hidden">{label.split(' ')[0]}</span>
           </button>
         ))}
+        </div>
+        <div className="hidden sm:flex items-center gap-1 text-[10px] text-gray-400 shrink-0">
+          <kbd className="px-1.5 py-0.5 rounded bg-gray-100 font-mono">N</kbd> доход
+          <kbd className="px-1.5 py-0.5 rounded bg-gray-100 font-mono ml-1">E</kbd> расход
+        </div>
       </div>
 
       {tab === 'income' && <><RecurringReminder /><IncomeTracker /></>}

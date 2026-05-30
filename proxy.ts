@@ -1,7 +1,7 @@
 import { auth } from '@/auth'
 import { NextResponse } from 'next/server'
 
-const PUBLIC_PATHS = ['/login', '/signup']
+const PUBLIC_PATHS = ['/login', '/signup', '/forgot-password', '/reset-password', '/chat', '/onboarding']
 
 export const proxy = auth((req) => {
   const { nextUrl } = req

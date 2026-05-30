@@ -18,7 +18,12 @@ export async function POST(req: Request) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json() as ReceiptRequest
+  let body: ReceiptRequest
+  try {
+    body = await req.json() as ReceiptRequest
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
   const { amount, description, isLegal, clientName, clientInn, nalogToken, nalogInn } = body
 
   if (!nalogToken || !nalogInn) {
@@ -52,15 +57,22 @@ export async function POST(req: Request) {
     totalAmount: amount,
   }
 
-  const res = await fetch(`${NALOG_API}/income`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${nalogToken}`,
-      'Content-Type': 'application/json',
-      'Inn': nalogInn,
-    },
-    body: JSON.stringify(payload),
-  })
+  let res: Response
+  try {
+    res = await fetch(`${NALOG_API}/income`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${nalogToken}`,
+        'Content-Type': 'application/json',
+        'Inn': nalogInn,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    })
+  } catch (e) {
+    console.error('[nalog/receipt] fetch failed', e)
+    return NextResponse.json({ error: 'Ошибка подключения к Мой налог' }, { status: 502 })
+  }
 
   if (!res.ok) {
     const err = await res.text()

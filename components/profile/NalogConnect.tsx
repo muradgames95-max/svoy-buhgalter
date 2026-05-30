@@ -2,40 +2,39 @@
 
 import { useState, useEffect } from 'react'
 import { Smartphone, Check, AlertCircle, ExternalLink, Eye, EyeOff } from 'lucide-react'
+import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '@/lib/storage'
 
 interface NalogCredentials {
   inn: string
   token: string
 }
 
-const STORAGE_KEY = 'sb_nalog_creds'
+const EMPTY: NalogCredentials = { inn: '', token: '' }
 
 export default function NalogConnect() {
-  const [creds, setCreds] = useState<NalogCredentials>({ inn: '', token: '' })
+  const [creds, setCreds] = useState<NalogCredentials>(EMPTY)
   const [saved, setSaved] = useState(false)
   const [showToken, setShowToken] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<'ok' | 'error' | null>(null)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) setCreds(JSON.parse(raw) as NalogCredentials)
-    } catch { /* ignore */ }
+    const stored = loadFromStorage<NalogCredentials>(STORAGE_KEYS.NALOG_CREDS, EMPTY)
+    if (stored.inn || stored.token) setCreds(stored)
   }, [])
 
   const isConfigured = !!(creds.inn && creds.token)
 
   function saveCreds() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(creds))
+    saveToStorage(STORAGE_KEYS.NALOG_CREDS, creds)
     setSaved(true)
     setTestResult(null)
     setTimeout(() => setSaved(false), 2000)
   }
 
   function clearCreds() {
-    localStorage.removeItem(STORAGE_KEY)
-    setCreds({ inn: '', token: '' })
+    saveToStorage(STORAGE_KEYS.NALOG_CREDS, EMPTY)
+    setCreds(EMPTY)
     setTestResult(null)
   }
 
@@ -44,10 +43,13 @@ export default function NalogConnect() {
     setTesting(true)
     setTestResult(null)
     try {
-      const res = await fetch('https://lknpd.nalog.ru/api/v1/taxpayer', {
-        headers: { Authorization: `Bearer ${creds.token}`, Inn: creds.inn },
+      const res = await fetch('/api/nalog/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inn: creds.inn, token: creds.token }),
       })
-      setTestResult(res.ok ? 'ok' : 'error')
+      const data = await res.json() as { ok: boolean }
+      setTestResult(data.ok ? 'ok' : 'error')
     } catch {
       setTestResult('error')
     } finally {

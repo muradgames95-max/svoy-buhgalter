@@ -1,3 +1,5 @@
+import { auth } from '@/auth'
+
 interface DeadlineItem {
   title: string
   date: string
@@ -5,12 +7,16 @@ interface DeadlineItem {
   type: string
 }
 
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 function buildEmailHtml(deadlines: DeadlineItem[]): string {
   const rows = deadlines.map((d) => `
     <tr>
-      <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#111">${d.title}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;color:#666;white-space:nowrap">${d.date}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;color:#888;font-size:13px">${d.description}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#111">${esc(d.title)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;color:#666;white-space:nowrap">${esc(d.date)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;color:#888;font-size:13px">${esc(d.description)}</td>
     </tr>`).join('')
 
   return `<!DOCTYPE html>
@@ -45,19 +51,20 @@ function buildEmailHtml(deadlines: DeadlineItem[]): string {
 }
 
 export async function POST(req: Request) {
+  const session = await auth()
+  if (!session?.user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { email, deadlines } = await req.json() as { email: string; deadlines: DeadlineItem[] }
 
-    if (!email || !email.includes('@')) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return Response.json({ error: 'Неверный email' }, { status: 400 })
     }
 
     const apiKey = process.env.RESEND_API_KEY
 
     if (!apiKey) {
-      // Log to console when not configured — still return 200 so UI shows "sent"
       console.log('[notify-email] RESEND_API_KEY not set. Would send to:', email)
-      console.log('[notify-email] Deadlines:', deadlines.map((d) => d.title).join(', '))
       return Response.json({
         ok: true,
         note: 'Настройте RESEND_API_KEY в .env.local для реальной отправки писем',

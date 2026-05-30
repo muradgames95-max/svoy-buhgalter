@@ -5,10 +5,16 @@ import Link from 'next/link'
 import {
   TrendingUp, MessageCircle, FileText, Calculator,
   Plus, ArrowRight, Wallet, CalendarClock, Sparkles, Target, Pencil, Check,
-  ArrowUp, ArrowDown, Receipt, ShoppingBag, AlertCircle,
+  ArrowUp, ArrowDown, Receipt, ShoppingBag, AlertCircle, StickyNote, X, BookOpen,
+  RefreshCw, DollarSign,
 } from 'lucide-react'
 import AppShell from '@/components/layout/AppShell'
 import NpdTaxSchedule from '@/components/tax/NpdTaxSchedule'
+import MonthlyChart from '@/components/dashboard/MonthlyChart'
+import HealthScore from '@/components/dashboard/HealthScore'
+import Achievements from '@/components/dashboard/Achievements'
+import TaxForecast from '@/components/dashboard/TaxForecast'
+import TipOfDay from '@/components/dashboard/TipOfDay'
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '@/lib/storage'
 import { DEADLINES_2026, getDaysUntil } from '@/lib/deadlines'
 import { calculateNPDTax, formatRubles } from '@/lib/utils'
@@ -49,16 +55,39 @@ export default function OverviewPage() {
   const [monthlyGoal, setMonthlyGoal] = useState(0)
   const [editingGoal, setEditingGoal] = useState(false)
   const [goalInput, setGoalInput] = useState('')
+  const [annualGoal, setAnnualGoal] = useState(0)
+  const [editingAnnualGoal, setEditingAnnualGoal] = useState(false)
+  const [annualGoalInput, setAnnualGoalInput] = useState('')
+  const [notes, setNotes] = useState<string[]>([])
+  const [noteInput, setNoteInput] = useState('')
+  const [showNoteInput, setShowNoteInput] = useState(false)
+  const [usdRate, setUsdRate] = useState(90)
+  const [eurRate, setEurRate] = useState(98)
+  const [convAmount, setConvAmount] = useState('')
+  const [convCurrency, setConvCurrency] = useState<'USD' | 'EUR'>('USD')
+  const [editingRates, setEditingRates] = useState(false)
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [clients, setClients] = useState<{ id: string }[]>([])
+  const [documents, setDocuments] = useState<{ id: string }[]>([])
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
     function loadData() {
       setIncomes(loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, []))
       setExpenses(loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []))
+      setClients(loadFromStorage<{ id: string }[]>(STORAGE_KEYS.CLIENTS, []))
+      setDocuments(loadFromStorage<{ id: string }[]>(STORAGE_KEYS.DOCUMENTS, []))
       setProfile(loadFromStorage<UserProfile>(STORAGE_KEYS.PROFILE, {}))
       const g = loadFromStorage<number>(STORAGE_KEYS.MONTHLY_GOAL, 0)
       setMonthlyGoal(g)
       setGoalInput(g > 0 ? String(g) : '')
+      const ag = loadFromStorage<number>(STORAGE_KEYS.ANNUAL_GOAL, 0)
+      setAnnualGoal(ag)
+      setAnnualGoalInput(ag > 0 ? String(ag) : '')
+      setNotes(loadFromStorage<string[]>(STORAGE_KEYS.NOTES, []))
+      const rates = loadFromStorage<{ usd: number; eur: number }>(STORAGE_KEYS.SETTINGS, { usd: 90, eur: 98 })
+      if (rates.usd) setUsdRate(rates.usd)
+      if (rates.eur) setEurRate(rates.eur)
       setHydrated(true)
     }
     loadData()
@@ -74,15 +103,60 @@ export default function OverviewPage() {
     setEditingGoal(false)
   }
 
+  function saveAnnualGoal() {
+    const v = parseFloat(annualGoalInput.replace(/\s/g, '').replace(',', '.'))
+    const goal = isNaN(v) || v <= 0 ? 0 : v
+    setAnnualGoal(goal)
+    saveToStorage(STORAGE_KEYS.ANNUAL_GOAL, goal)
+    setEditingAnnualGoal(false)
+  }
+
+  function addNote() {
+    const text = noteInput.trim()
+    if (!text) return
+    const next = [...notes, text]
+    setNotes(next)
+    saveToStorage(STORAGE_KEYS.NOTES, next)
+    setNoteInput('')
+    setShowNoteInput(false)
+  }
+
+  function removeNote(idx: number) {
+    const next = notes.filter((_, i) => i !== idx)
+    setNotes(next)
+    saveToStorage(STORAGE_KEYS.NOTES, next)
+  }
+
+  function saveRates(usd: number, eur: number) {
+    setUsdRate(usd)
+    setEurRate(eur)
+    const prev = loadFromStorage<Record<string, unknown>>(STORAGE_KEYS.SETTINGS, {})
+    saveToStorage(STORAGE_KEYS.SETTINGS, { ...prev, usd, eur })
+    setEditingRates(false)
+  }
+
+  const convResult = convAmount
+    ? parseFloat(convAmount.replace(',', '.')) * (convCurrency === 'USD' ? usdRate : eurRate)
+    : null
+
   const currentMonth = new Date().getMonth() + 1
   const currentYear = new Date().getFullYear()
 
   const yearIncomes  = useMemo(() => incomes.filter((i) => parseInt(i.date.split('-')[0]) === currentYear), [incomes, currentYear])
   const yearExpenses = useMemo(() => expenses.filter((e) => parseInt(e.date.split('-')[0]) === currentYear), [expenses, currentYear])
 
-  const totalIncome  = useMemo(() => yearIncomes.reduce((s, i) => s + i.amount, 0), [yearIncomes])
-  const totalTax     = useMemo(() => yearIncomes.reduce((s, i) => s + calculateNPDTax(i.amount, i.isLegal), 0), [yearIncomes])
+  const isNpd = !profile.executorStatus || profile.executorStatus.toLowerCase().includes('нпд') || profile.executorStatus.toLowerCase().includes('самозанят')
+  const isUsn6 = !isNpd && !!profile.executorStatus?.toLowerCase().includes('усн') && !profile.executorStatus?.toLowerCase().includes('15')
+  const isUsn15 = !isNpd && !!profile.executorStatus?.toLowerCase().includes('усн') && !!profile.executorStatus?.toLowerCase().includes('15')
+
+  const totalIncome   = useMemo(() => yearIncomes.reduce((s, i) => s + i.amount, 0), [yearIncomes])
   const totalExpenses = useMemo(() => yearExpenses.reduce((s, e) => s + e.amount, 0), [yearExpenses])
+  const totalTax      = useMemo(() => {
+    if (isNpd) return yearIncomes.reduce((s, i) => s + calculateNPDTax(i.amount, i.isLegal), 0)
+    if (isUsn6) return totalIncome * 0.06
+    if (isUsn15) return Math.max(totalIncome * 0.01, Math.max(0, totalIncome - totalExpenses) * 0.15)
+    return 0
+  }, [isNpd, isUsn6, isUsn15, yearIncomes, totalIncome, totalExpenses])
 
   const thisMonthIncome = useMemo(() =>
     yearIncomes.filter((i) => parseInt(i.date.split('-')[1]) === currentMonth).reduce((s, i) => s + i.amount, 0),
@@ -92,7 +166,15 @@ export default function OverviewPage() {
   const usagePct = Math.min((totalIncome / NPD_LIMIT) * 100, 100)
   const remaining = NPD_LIMIT - totalIncome
   const goalPct = monthlyGoal > 0 ? Math.min((thisMonthIncome / monthlyGoal) * 100, 100) : 0
-  const isNpd = !profile.executorStatus || profile.executorStatus.toLowerCase().includes('нпд') || profile.executorStatus.toLowerCase().includes('самозанят')
+  const annualGoalPct = annualGoal > 0 ? Math.min((totalIncome / annualGoal) * 100, 100) : 0
+
+  useEffect(() => {
+    if (goalPct >= 100 && monthlyGoal > 0 && hydrated) {
+      setShowConfetti(true)
+      const t = setTimeout(() => setShowConfetti(false), 4000)
+      return () => clearTimeout(t)
+    }
+  }, [goalPct, monthlyGoal, hydrated])
 
   const upcomingDeadlines = useMemo(() =>
     DEADLINES_2026
@@ -125,12 +207,19 @@ export default function OverviewPage() {
     return ((thisMonthIncome - lastMonthIncome) / lastMonthIncome) * 100
   }, [thisMonthIncome, lastMonthIncome])
 
-  const thisMonthTax = useMemo(() =>
-    yearIncomes
-      .filter((i) => parseInt(i.date.split('-')[1]) === currentMonth)
-      .reduce((s, i) => s + calculateNPDTax(i.amount, i.isLegal), 0),
-    [yearIncomes, currentMonth]
-  )
+  const thisMonthTax = useMemo(() => {
+    const monthIncomes = yearIncomes.filter((i) => parseInt(i.date.split('-')[1]) === currentMonth)
+    if (isNpd) return monthIncomes.reduce((s, i) => s + calculateNPDTax(i.amount, i.isLegal), 0)
+    const monthIncome = monthIncomes.reduce((s, i) => s + i.amount, 0)
+    if (isUsn6) return monthIncome * 0.06
+    if (isUsn15) {
+      const monthExpenses = yearExpenses
+        .filter((e) => parseInt(e.date.split('-')[1]) === currentMonth)
+        .reduce((s, e) => s + e.amount, 0)
+      return Math.max(monthIncome * 0.01, Math.max(0, monthIncome - monthExpenses) * 0.15)
+    }
+    return 0
+  }, [isNpd, isUsn6, isUsn15, yearIncomes, yearExpenses, currentMonth])
 
   const topExpenseCategory = useMemo(() => {
     const map: Record<string, number> = {}
@@ -147,8 +236,7 @@ export default function OverviewPage() {
     []
   )
 
-  const taxDueMonth = currentMonth === 12 ? 0 : currentMonth
-  const taxDueLabel = `28 ${MONTH_SHORT[taxDueMonth]}`
+  const taxDueLabel = `28 ${MONTH_SHORT[currentMonth % 12]}`
 
   const firstName = profile.name ? profile.name.split(' ')[0] : null
   const todayStr = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' })
@@ -157,6 +245,31 @@ export default function OverviewPage() {
 
   return (
     <AppShell>
+      {showConfetti && (
+        <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+          {Array.from({ length: 40 }).map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 rounded-sm animate-bounce"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 60}%`,
+                background: ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#ef4444'][i % 6],
+                animationDelay: `${Math.random() * 0.8}s`,
+                animationDuration: `${0.5 + Math.random() * 0.6}s`,
+                opacity: 0.85,
+              }}
+            />
+          ))}
+          <div className="absolute inset-0 flex items-start justify-center pt-24">
+            <div className="bg-white rounded-3xl shadow-2xl px-8 py-5 text-center border border-indigo-100">
+              <p className="text-3xl mb-1">🎉</p>
+              <p className="text-lg font-black text-gray-900">Цель достигнута!</p>
+              <p className="text-sm text-indigo-600 font-semibold mt-0.5">{formatRubles(monthlyGoal)} за месяц</p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="min-h-full bg-gray-50">
         <div className="max-w-2xl mx-auto px-4 pb-16 space-y-5">
 
@@ -209,26 +322,28 @@ export default function OverviewPage() {
                 </div>
               )}
 
-              {/* NPD limit bar */}
-              <div>
-                <div className="flex justify-between text-[11px] mb-1.5">
-                  <span className="text-gray-400">Лимит НПД {currentYear}</span>
-                  <span className={cn('font-bold', usagePct >= 90 ? 'text-red-400' : usagePct >= 75 ? 'text-amber-400' : 'text-indigo-300')}>
-                    {usagePct.toFixed(1)}% · {remaining > 0 ? 'ост. ' + formatRubles(remaining) : 'исчерпан'}
-                  </span>
+              {/* NPD limit bar — only for НПД users */}
+              {isNpd && (
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1.5">
+                    <span className="text-gray-400">Лимит НПД {currentYear}</span>
+                    <span className={cn('font-bold', usagePct >= 90 ? 'text-red-400' : usagePct >= 75 ? 'text-amber-400' : 'text-indigo-300')}>
+                      {usagePct.toFixed(1)}% · {remaining > 0 ? 'ост. ' + formatRubles(remaining) : 'исчерпан'}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${usagePct}%`,
+                        background: usagePct >= 90 ? 'linear-gradient(90deg,#ef4444,#dc2626)'
+                          : usagePct >= 75 ? 'linear-gradient(90deg,#f59e0b,#ef4444)'
+                          : 'linear-gradient(90deg,#6366f1,#a78bfa)',
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{
-                      width: `${usagePct}%`,
-                      background: usagePct >= 90 ? 'linear-gradient(90deg,#ef4444,#dc2626)'
-                        : usagePct >= 75 ? 'linear-gradient(90deg,#f59e0b,#ef4444)'
-                        : 'linear-gradient(90deg,#6366f1,#a78bfa)',
-                    }}
-                  />
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
@@ -296,6 +411,216 @@ export default function OverviewPage() {
             )}
           </div>
 
+          {/* Annual goal */}
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <BookOpen className="w-[18px] h-[18px] text-emerald-600" />
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900 text-sm">Годовая цель</p>
+                  <p className="text-xs text-gray-400">
+                    {annualGoal > 0 ? `${formatRubles(annualGoal)} за ${currentYear}` : 'Не задана'}
+                  </p>
+                </div>
+              </div>
+              {!editingAnnualGoal && (
+                <button
+                  onClick={() => { setEditingAnnualGoal(true); setAnnualGoalInput(annualGoal > 0 ? String(annualGoal) : '') }}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-800 px-3 py-1.5 rounded-xl hover:bg-emerald-50 transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> {annualGoal > 0 ? 'Изменить' : 'Задать'}
+                </button>
+              )}
+            </div>
+
+            {editingAnnualGoal && (
+              <div className="flex gap-2 mt-4">
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="2 000 000"
+                    value={annualGoalInput}
+                    onChange={(e) => setAnnualGoalInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && saveAnnualGoal()}
+                    autoFocus
+                    className="w-full rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-8"
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">₽</span>
+                </div>
+                <button
+                  onClick={saveAnnualGoal}
+                  className="w-10 h-10 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition-colors shadow-sm"
+                >
+                  <Check className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {annualGoal > 0 && !editingAnnualGoal && (
+              <div className="mt-4">
+                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={cn('h-full rounded-full transition-all duration-700', annualGoalPct >= 100 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-emerald-400 to-teal-500')}
+                    style={{ width: `${annualGoalPct}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-2 text-xs text-gray-500">
+                  <span>{formatRubles(totalIncome)} заработано</span>
+                  <span className={cn('font-semibold', annualGoalPct >= 100 ? 'text-emerald-600' : 'text-gray-500')}>
+                    {annualGoalPct >= 100 ? '✓ Цель достигнута!' : `${annualGoalPct.toFixed(0)}% · ост. ${formatRubles(Math.max(annualGoal - totalIncome, 0))}`}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Quick notes */}
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <StickyNote className="w-3.5 h-3.5 text-amber-600" />
+                </div>
+                <p className="font-bold text-gray-900 text-sm">Заметки</p>
+              </div>
+              <button
+                onClick={() => setShowNoteInput(!showNoteInput)}
+                className="w-7 h-7 rounded-xl bg-amber-100 hover:bg-amber-200 flex items-center justify-center transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5 text-amber-700" />
+              </button>
+            </div>
+
+            {showNoteInput && (
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  placeholder="Новая заметка..."
+                  value={noteInput}
+                  onChange={(e) => setNoteInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') addNote(); if (e.key === 'Escape') setShowNoteInput(false) }}
+                  autoFocus
+                  className="flex-1 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                <button onClick={addNote} className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold transition-colors">
+                  <Check className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {notes.length === 0 && !showNoteInput && (
+              <p className="text-xs text-gray-400 text-center py-3">Нет заметок. Нажмите + чтобы добавить.</p>
+            )}
+
+            <div className="space-y-2">
+              {notes.map((note, idx) => (
+                <div key={idx} className="flex items-start gap-2 bg-amber-50 rounded-xl px-3.5 py-2.5 group">
+                  <p className="flex-1 text-sm text-gray-800 leading-snug">{note}</p>
+                  <button
+                    onClick={() => removeNote(idx)}
+                    className="shrink-0 text-gray-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Currency converter */}
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-sky-100 flex items-center justify-center">
+                  <DollarSign className="w-3.5 h-3.5 text-sky-600" />
+                </div>
+                <p className="font-bold text-gray-900 text-sm">Конвертер валют</p>
+              </div>
+              <button
+                onClick={() => setEditingRates(!editingRates)}
+                className="p-1.5 text-gray-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors"
+                title="Изменить курсы"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {editingRates && (
+              <div className="mb-3 p-3 bg-sky-50 rounded-xl space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-sky-700 w-12">USD</span>
+                  <input
+                    type="text" inputMode="decimal" placeholder="90"
+                    defaultValue={usdRate}
+                    id="usd-rate-input"
+                    className="flex-1 rounded-lg border border-sky-200 bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  />
+                  <span className="text-xs text-gray-500">₽</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-sky-700 w-12">EUR</span>
+                  <input
+                    type="text" inputMode="decimal" placeholder="98"
+                    defaultValue={eurRate}
+                    id="eur-rate-input"
+                    className="flex-1 rounded-lg border border-sky-200 bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  />
+                  <span className="text-xs text-gray-500">₽</span>
+                </div>
+                <button
+                  onClick={() => {
+                    const usd = parseFloat((document.getElementById('usd-rate-input') as HTMLInputElement)?.value ?? '') || usdRate
+                    const eur = parseFloat((document.getElementById('eur-rate-input') as HTMLInputElement)?.value ?? '') || eurRate
+                    saveRates(usd, eur)
+                  }}
+                  className="w-full py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-semibold transition-colors"
+                >
+                  Сохранить курсы
+                </button>
+              </div>
+            )}
+
+            <div className="flex gap-2 mb-3">
+              <div className="flex rounded-xl overflow-hidden border border-gray-200">
+                {(['USD', 'EUR'] as const).map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setConvCurrency(c)}
+                    className={cn('px-3 py-2 text-xs font-bold transition-colors', convCurrency === c ? 'bg-sky-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50')}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <div className="flex-1 relative">
+                <input
+                  type="text" inputMode="decimal"
+                  placeholder={`Сумма в ${convCurrency}`}
+                  value={convAmount}
+                  onChange={(e) => setConvAmount(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 pr-12"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">{convCurrency}</span>
+              </div>
+            </div>
+
+            <div className="bg-sky-50 rounded-2xl px-4 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] text-sky-500 font-medium">Результат</p>
+                <p className="text-xl font-black text-sky-700">
+                  {convResult !== null && !isNaN(convResult) ? formatRubles(convResult) : '—'}
+                </p>
+              </div>
+              <div className="text-right text-[10px] text-sky-400 space-y-0.5">
+                <p>1 USD = {usdRate} ₽</p>
+                <p>1 EUR = {eurRate} ₽</p>
+              </div>
+            </div>
+          </div>
+
           {/* Quick actions */}
           <div className="grid grid-cols-2 gap-3">
             {QUICK_ACTIONS.map(({ href, icon: Icon, label, color }) => (
@@ -309,6 +634,45 @@ export default function OverviewPage() {
               </Link>
             ))}
           </div>
+
+          {/* Tip of the day */}
+          <TipOfDay />
+
+          {/* Monthly Chart */}
+          <MonthlyChart incomes={yearIncomes.map(i => ({ date: i.date, amount: i.amount }))} expenses={yearExpenses.map(e => ({ date: e.date, amount: e.amount }))} />
+
+          {/* Tax Forecast */}
+          <TaxForecast
+            incomes={yearIncomes}
+            totalIncome={totalIncome}
+            isNpd={isNpd}
+            isUsn6={isUsn6}
+            isUsn15={isUsn15}
+            totalExpenses={totalExpenses}
+          />
+
+          {/* Health Score */}
+          <HealthScore
+            totalIncome={totalIncome}
+            totalExpenses={totalExpenses}
+            totalTax={totalTax}
+            npdUsagePct={usagePct}
+            isNpd={isNpd}
+            incomeMomentum={incomeMomentum}
+            monthlyGoalPct={goalPct}
+            hasData={incomes.length > 0}
+          />
+
+          {/* Achievements */}
+          <Achievements
+            totalIncome={totalIncome}
+            totalExpenses={totalExpenses}
+            incomeCount={yearIncomes.length}
+            clientCount={clients.length}
+            documentCount={documents.length}
+            hasGoal={monthlyGoal > 0}
+            goalReached={goalPct >= 100}
+          />
 
           {/* Smart Insights */}
           {(incomeMomentum !== null || thisMonthTax > 0 || topExpenseCategory || nextDeadline) && (
@@ -334,17 +698,19 @@ export default function OverviewPage() {
                   </div>
                 )}
 
-                {/* NPD tax this month */}
-                {isNpd && thisMonthTax > 0 && (
+                {/* Tax this month */}
+                {thisMonthTax > 0 && (
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                     <div className="flex items-center gap-1.5 mb-2">
                       <div className="w-6 h-6 rounded-lg bg-amber-100 flex items-center justify-center">
                         <Receipt className="w-3.5 h-3.5 text-amber-600" />
                       </div>
-                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Налог НПД</span>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                        {isNpd ? 'Налог НПД' : isUsn6 ? 'УСН 6%' : isUsn15 ? 'УСН 15%' : 'Налог'}
+                      </span>
                     </div>
                     <p className="text-xl font-bold leading-none text-amber-600">{formatRubles(thisMonthTax)}</p>
-                    <p className="text-[11px] text-gray-400 mt-1">до {taxDueLabel}</p>
+                    {isNpd && <p className="text-[11px] text-gray-400 mt-1">до {taxDueLabel}</p>}
                   </div>
                 )}
 

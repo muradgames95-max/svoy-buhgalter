@@ -15,10 +15,16 @@ export async function POST(req: Request) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json() as { planId: string; period: 'monthly' | 'yearly' }
+  let body: { planId: string; period: 'monthly' | 'yearly' }
+  try {
+    body = await req.json() as typeof body
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
   const { planId, period } = body
 
   if (!PRICES[planId]) return NextResponse.json({ error: 'Unknown plan' }, { status: 400 })
+  if (period !== 'monthly' && period !== 'yearly') return NextResponse.json({ error: 'Invalid period' }, { status: 400 })
 
   if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY ||
       YOOKASSA_SHOP_ID === 'your_shop_id' || YOOKASSA_SECRET_KEY === 'your_secret_key') {
@@ -31,6 +37,7 @@ export async function POST(req: Request) {
   const idempotenceKey = randomUUID()
 
   const ykRes = await fetch('https://api.yookassa.ru/v3/payments', {
+    signal: AbortSignal.timeout(15000),
     method: 'POST',
     headers: {
       'Authorization': `Basic ${Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString('base64')}`,

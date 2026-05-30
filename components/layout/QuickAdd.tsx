@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Plus, X, TrendingUp, ShoppingBag, Check, ChevronDown } from 'lucide-react'
-import { cn, calculateNPDTax } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '@/lib/storage'
 
 interface Income { id: string; description: string; amount: number; isLegal: boolean; date: string; clientId?: string; clientName?: string }
@@ -22,6 +22,11 @@ export default function QuickAdd() {
   const [expenseForm, setExpenseForm] = useState({ description: '', amount: '', category: 'Прочее' })
 
   const descRef = useRef<HTMLInputElement>(null)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
+  }, [])
 
   useEffect(() => {
     setClients(loadFromStorage<Client[]>(STORAGE_KEYS.CLIENTS, []))
@@ -61,7 +66,8 @@ export default function QuickAdd() {
     saveToStorage(STORAGE_KEYS.INCOMES, next)
     window.dispatchEvent(new CustomEvent('svoy-storage-updated'))
     setSaved(true)
-    setTimeout(close, 1200)
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(close, 1200)
   }
 
   function saveExpense() {
@@ -78,7 +84,8 @@ export default function QuickAdd() {
     saveToStorage(STORAGE_KEYS.EXPENSES, next)
     window.dispatchEvent(new CustomEvent('svoy-storage-updated'))
     setSaved(true)
-    setTimeout(close, 1200)
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(close, 1200)
   }
 
   const isIncome = mode === 'income'

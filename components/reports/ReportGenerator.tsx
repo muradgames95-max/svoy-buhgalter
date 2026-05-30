@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useEffect } from 'react'
-import { Printer, TrendingUp, TrendingDown, Receipt, Calendar } from 'lucide-react'
+import { Printer, TrendingUp, TrendingDown, Receipt, Calendar, Download, FileText } from 'lucide-react'
 import { cn, formatRubles, calculateNPDTax } from '@/lib/utils'
 import { loadFromStorage, STORAGE_KEYS } from '@/lib/storage'
 
@@ -108,6 +108,54 @@ export default function ReportGenerator() {
     window.print()
   }
 
+  function exportCSV() {
+    const BOM = '﻿'
+    const rows: string[][] = []
+
+    rows.push([`Финансовый отчёт — ${periodLabel}`])
+    rows.push([`Сформировано: ${new Date().toLocaleDateString('ru-RU')}`])
+    rows.push([])
+
+    rows.push(['СВОДКА'])
+    rows.push(['Показатель', 'Сумма'])
+    rows.push(['Доходы', String(totalIncome)])
+    rows.push(['Расходы', String(totalExpenses)])
+    rows.push(['Налог НПД', String(totalTax)])
+    rows.push(['Чистая прибыль', String(netProfit)])
+    rows.push([])
+
+    rows.push(['ДОХОДЫ'])
+    rows.push(['Дата', 'Описание', 'Сумма', 'Налог', 'Тип'])
+    for (const i of filtered.incomes) {
+      rows.push([i.date, i.description, String(i.amount), String(calculateNPDTax(i.amount, i.isLegal)), i.isLegal ? 'Юр.лицо' : 'Физ.лицо'])
+    }
+    rows.push([])
+
+    rows.push(['РАСХОДЫ'])
+    rows.push(['Дата', 'Описание', 'Сумма', 'Категория'])
+    for (const e of filtered.expenses) {
+      rows.push([e.date, e.description, String(e.amount), e.category ?? 'Прочее'])
+    }
+    rows.push([])
+
+    if (expenseByCategory.length > 0) {
+      rows.push(['РАСХОДЫ ПО КАТЕГОРИЯМ'])
+      rows.push(['Категория', 'Сумма'])
+      for (const [cat, amount] of expenseByCategory) {
+        rows.push([cat, String(amount)])
+      }
+    }
+
+    const csv = BOM + rows.map((r) => r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(';')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `отчёт_${periodLabel.replace(/\s/g, '_')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const expenseByCategory = useMemo(() => {
     const map: Record<string, number> = {}
     for (const e of filtered.expenses) {
@@ -170,13 +218,22 @@ export default function ReportGenerator() {
             </>
           )}
 
-          <button
-            onClick={handlePrint}
-            className="ml-auto flex items-center gap-2 px-4 py-2 bg-gray-950 text-white rounded-2xl text-sm font-bold hover:bg-gray-800 transition-colors"
-          >
-            <Printer className="w-4 h-4" />
-            Сохранить PDF
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={exportCSV}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-2xl text-sm font-bold hover:bg-emerald-700 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Excel / CSV
+            </button>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-950 text-white rounded-2xl text-sm font-bold hover:bg-gray-800 transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              PDF
+            </button>
+          </div>
         </div>
       </div>
 

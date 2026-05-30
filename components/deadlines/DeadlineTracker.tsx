@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { format, parseISO } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { Bell, AlertTriangle, CheckCircle2, Filter, Mail, Loader2, CheckCircle } from 'lucide-react'
+import { Bell, AlertTriangle, CheckCircle2, Filter, Mail, Loader2, CheckCircle, BellOff, Settings2 } from 'lucide-react'
 import { DEADLINES_2026, getDaysUntil, type TaxRegime } from '@/lib/deadlines'
 import { cn } from '@/lib/utils'
-import { loadFromStorage, STORAGE_KEYS } from '@/lib/storage'
+import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '@/lib/storage'
 
 const REGIMES: TaxRegime[] = ['Все', 'НПД', 'УСН', 'ИП', 'ОСНО']
 
@@ -41,11 +41,51 @@ export default function DeadlineTracker() {
   const [showPast, setShowPast] = useState(false)
   const [email, setEmail] = useState('')
   const [emailStatus, setEmailStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle')
+  const emailTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Auto-notification preferences
+  const [notifyEnabled, setNotifyEnabled] = useState(false)
+  const [notifyDays, setNotifyDays] = useState<number[]>([3, 7])
+  const [showNotifySettings, setShowNotifySettings] = useState(false)
+  const [savingNotify, setSavingNotify] = useState(false)
+  const [notifySaved, setNotifySaved] = useState(false)
+
+  useEffect(() => {
+    return () => { if (emailTimerRef.current) clearTimeout(emailTimerRef.current) }
+  }, [])
 
   useEffect(() => {
     const profile = loadFromStorage<{ email?: string }>(STORAGE_KEYS.PROFILE, {})
     if (profile.email) setEmail(profile.email)
+    const settings = loadFromStorage<{ notifyEnabled?: boolean; notifyDays?: number[] }>(STORAGE_KEYS.SETTINGS, {})
+    if (settings.notifyEnabled !== undefined) setNotifyEnabled(settings.notifyEnabled)
+    if (settings.notifyDays) setNotifyDays(settings.notifyDays)
   }, [])
+
+  async function saveNotifySettings(enabled: boolean, days: number[]) {
+    setSavingNotify(true)
+    const settings = loadFromStorage<Record<string, unknown>>(STORAGE_KEYS.SETTINGS, {})
+    saveToStorage(STORAGE_KEYS.SETTINGS, { ...settings, notifyEnabled: enabled, notifyDays: days })
+    // Sync to DB via existing data sync
+    window.dispatchEvent(new CustomEvent('sb:storage-updated', { detail: { key: STORAGE_KEYS.SETTINGS } }))
+    setSavingNotify(false)
+    setNotifySaved(true)
+    setTimeout(() => setNotifySaved(false), 2500)
+  }
+
+  function toggleDay(day: number) {
+    const updated = notifyDays.includes(day)
+      ? notifyDays.filter((d) => d !== day)
+      : [...notifyDays, day]
+    setNotifyDays(updated)
+    if (notifyEnabled) saveNotifySettings(notifyEnabled, updated)
+  }
+
+  function toggleEnabled() {
+    const next = !notifyEnabled
+    setNotifyEnabled(next)
+    saveNotifySettings(next, notifyDays)
+  }
 
   async function sendReminder() {
     if (!email.includes('@')) return
@@ -63,7 +103,8 @@ export default function DeadlineTracker() {
     } catch {
       setEmailStatus('error')
     }
-    setTimeout(() => setEmailStatus('idle'), 4000)
+    if (emailTimerRef.current) clearTimeout(emailTimerRef.current)
+    emailTimerRef.current = setTimeout(() => setEmailStatus('idle'), 4000)
   }
 
   const filtered = DEADLINES_2026.filter((d) => {
@@ -85,11 +126,23 @@ export default function DeadlineTracker() {
   return (
     <div className="space-y-4">
       {/* Email notification card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Mail className="w-4 h-4 text-indigo-500" />
-          <p className="text-sm font-semibold text-gray-900">Напоминания на email</p>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+        {/* Header row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-indigo-500" />
+            <p className="text-sm font-semibold text-gray-900">Напоминания на email</p>
+          </div>
+          <button
+            onClick={() => setShowNotifySettings(!showNotifySettings)}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <Settings2 className="w-3.5 h-3.5" />
+            Авто
+          </button>
         </div>
+
+        {/* Manual send */}
         <div className="flex gap-2">
           <input
             type="email"
@@ -117,7 +170,67 @@ export default function DeadlineTracker() {
              : 'Отправить'}
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-2">Получите список ближайших дедлайнов на почту</p>
+        <p className="text-xs text-gray-400">Получите список ближайших дедлайнов на почту прямо сейчас</p>
+
+        {/* Auto-notification settings */}
+        {showNotifySettings && (
+          <div className="pt-3 border-t border-gray-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Авто-уведомления</p>
+                <p className="text-xs text-gray-400 mt-0.5">Письмо придёт автоматически в 11:00</p>
+              </div>
+              <button
+                onClick={toggleEnabled}
+                className={cn(
+                  'relative w-11 h-6 rounded-full transition-colors shrink-0',
+                  notifyEnabled ? 'bg-indigo-600' : 'bg-gray-200'
+                )}
+              >
+                <span className={cn(
+                  'absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                  notifyEnabled ? 'left-6' : 'left-1'
+                )} />
+              </button>
+            </div>
+
+            {notifyEnabled && (
+              <div>
+                <p className="text-xs text-gray-500 mb-2">Напоминать за:</p>
+                <div className="flex gap-2">
+                  {[3, 7].map((day) => (
+                    <button
+                      key={day}
+                      onClick={() => toggleDay(day)}
+                      className={cn(
+                        'flex-1 py-2 rounded-xl text-sm font-semibold border transition-all',
+                        notifyDays.includes(day)
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300'
+                      )}
+                    >
+                      {day} дня
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 h-5">
+              {savingNotify && <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin" />}
+              {notifySaved && (
+                <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                  <CheckCircle className="w-3.5 h-3.5" /> Сохранено
+                </span>
+              )}
+              {!notifyEnabled && !savingNotify && !notifySaved && (
+                <span className="flex items-center gap-1 text-xs text-gray-400">
+                  <BellOff className="w-3.5 h-3.5" /> Уведомления выключены
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Next deadline banner */}

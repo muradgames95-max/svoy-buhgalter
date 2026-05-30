@@ -8,11 +8,13 @@ import { useSession, signOut } from 'next-auth/react'
 import {
   MessageCircle, TrendingUp, FileText, Bell, CreditCard,
   Home, Calculator, Sparkles, Users, LogOut, UserCircle, BarChart3,
+  Sun, Moon,
 } from 'lucide-react'
 const PLAN_LABELS: Record<string, string> = { free: 'Бесплатно', self: 'Самозанятый', ip: 'ИП / ООО' }
 import { cn } from '@/lib/utils'
 import { loadFromStorage, STORAGE_KEYS } from '@/lib/storage'
 import { DEADLINES_2026, getDaysUntil } from '@/lib/deadlines'
+import { toggleTheme, getTheme, initTheme, type Theme } from '@/lib/theme'
 
 interface UserProfile { name?: string; executorStatus?: string }
 interface Income { id: string; amount: number; date: string }
@@ -37,10 +39,13 @@ export default function Sidebar() {
   const [profile, setProfile] = useState<UserProfile>({})
   const [incomes, setIncomes] = useState<Income[]>([])
   const [sub, setSub] = useState<SubscriptionInfo | null>(null)
+  const [theme, setThemeState] = useState<Theme>('light')
 
   useEffect(() => {
     setProfile(loadFromStorage<UserProfile>(STORAGE_KEYS.PROFILE, {}))
     setIncomes(loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, []))
+    initTheme()
+    setThemeState(getTheme())
   }, [])
 
   useEffect(() => {
@@ -199,6 +204,17 @@ export default function Sidebar() {
           </div>
           <UserCircle className="w-3.5 h-3.5 text-gray-600 shrink-0" />
         </Link>
+
+        <button
+          onClick={() => {
+            const next = toggleTheme()
+            setThemeState(next)
+          }}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-gray-500 hover:text-white hover:bg-white/5 transition-all text-xs font-medium"
+        >
+          {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+          {theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+        </button>
 
         {session && (
           <button

@@ -3,9 +3,22 @@
 :root {
   --background: #f8f8fc;
   --foreground: #111118;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --border: #e5e7eb;
+  --text-muted: #6b7280;
   --duration-fast: 150ms;
   --duration-normal: 300ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark-mode {
+  --background: #0f0f14;
+  --foreground: #f0f0f8;
+  --surface: #1a1a24;
+  --surface-2: #22222e;
+  --border: #2e2e3e;
+  --text-muted: #9ca3af;
 }
 
 @theme inline {
@@ -18,7 +31,18 @@ body {
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+.dark-mode .bg-white { background-color: var(--surface) !important; }
+.dark-mode .bg-gray-50 { background-color: var(--background) !important; }
+.dark-mode .bg-gray-100 { background-color: var(--surface-2) !important; }
+.dark-mode .border-gray-100,
+.dark-mode .border-gray-200 { border-color: var(--border) !important; }
+.dark-mode .text-gray-900 { color: var(--foreground) !important; }
+.dark-mode .text-gray-700 { color: #d1d5db !important; }
+.dark-mode .text-gray-500,
+.dark-mode .text-gray-400 { color: var(--text-muted) !important; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(24px); }

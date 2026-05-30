@@ -12,6 +12,7 @@ const SYNC_KEYS = [
   STORAGE_KEYS.PROFILE,
   STORAGE_KEYS.SETTINGS,
   STORAGE_KEYS.CHAT_HISTORY,
+  STORAGE_KEYS.NALOG_CREDS,
 ] as const
 
 function getLocalPayload(): Record<string, string> {
@@ -52,7 +53,7 @@ export default function DataSync() {
           window.location.reload()
         }
       })
-      .catch(() => null)
+      .catch((e) => console.error('[DataSync] load failed', e))
   }, [status])
 
   // Debounced push to DB on any write
@@ -67,7 +68,7 @@ export default function DataSync() {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
-        }).catch(() => null)
+        }).catch((e) => console.error('[DataSync] save failed', e))
       }, 1500)
     }
 

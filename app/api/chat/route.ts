@@ -42,29 +42,42 @@ export async function POST(req: Request) {
     })
   }
 
-  const { messages, userContext } = await req.json()
+  let messages: unknown, userContext: string | undefined
+  try {
+    const body = await req.json() as { messages: unknown; userContext?: string }
+    messages = body.messages
+    userContext = body.userContext
+  } catch {
+    return new Response('Invalid JSON', { status: 400 })
+  }
+
   const systemPrompt = userContext ? TAX_SYSTEM_PROMPT + userContext : TAX_SYSTEM_PROMPT
 
   const stream = await anthropic.messages.stream({
     model: 'claude-sonnet-4-6',
     max_tokens: 2048,
     system: systemPrompt,
-    messages,
+    messages: messages as Parameters<typeof anthropic.messages.stream>[0]['messages'],
   })
 
   const encoder = new TextEncoder()
 
   const readable = new ReadableStream({
     async start(controller) {
-      for await (const chunk of stream) {
-        if (
-          chunk.type === 'content_block_delta' &&
-          chunk.delta.type === 'text_delta'
-        ) {
-          controller.enqueue(encoder.encode(chunk.delta.text))
+      try {
+        for await (const chunk of stream) {
+          if (
+            chunk.type === 'content_block_delta' &&
+            chunk.delta.type === 'text_delta'
+          ) {
+            controller.enqueue(encoder.encode(chunk.delta.text))
+          }
         }
+        controller.close()
+      } catch (e) {
+        console.error('[chat] stream error', e)
+        controller.error(e)
       }
-      controller.close()
     },
   })
 

@@ -46,7 +46,22 @@ export async function POST(req: Request) {
     })
   }
 
-  const { type, data } = await req.json()
+  let type: string, data: Record<string, string>
+  try {
+    const body = await req.json() as { type: string; data: Record<string, string> }
+    type = body.type
+    data = body.data ?? {}
+  } catch {
+    return new Response('Invalid JSON', { status: 400 })
+  }
+
+  const VALID_TYPES = ['act', 'contract', 'invoice'] as const
+  if (!VALID_TYPES.includes(type as typeof VALID_TYPES[number])) {
+    return new Response(JSON.stringify({ error: 'Invalid document type' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
 
   const prompts: Record<string, string> = {
     act: `Создай Акт выполненных работ (оказанных услуг) на основе данных:
@@ -93,12 +108,17 @@ export async function POST(req: Request) {
   const encoder = new TextEncoder()
   const readable = new ReadableStream({
     async start(controller) {
-      for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-          controller.enqueue(encoder.encode(chunk.delta.text))
+      try {
+        for await (const chunk of stream) {
+          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+            controller.enqueue(encoder.encode(chunk.delta.text))
+          }
         }
+        controller.close()
+      } catch (e) {
+        console.error('[documents] stream error', e)
+        controller.error(e)
       }
-      controller.close()
     },
   })
 

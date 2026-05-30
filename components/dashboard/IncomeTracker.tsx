@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Trash2, TrendingUp, Receipt, AlertCircle, Download, Pencil, Check, X, Wallet, ArrowUpRight, Search, AlertTriangle, UserCircle } from 'lucide-react'
+import { Plus, Trash2, TrendingUp, Receipt, AlertCircle, Download, Pencil, Check, X, Wallet, ArrowUpRight, Search, AlertTriangle, UserCircle, Copy, Upload, Clock } from 'lucide-react'
 import { cn, formatRubles, calculateNPDTax } from '@/lib/utils'
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '@/lib/storage'
+import { autoAddRecurring } from '@/lib/recurring'
 
 interface Income {
   id: string
@@ -14,6 +15,7 @@ interface Income {
   clientId?: string
   clientName?: string
   recurring?: boolean
+  status?: 'paid' | 'pending'
 }
 
 interface Client {
@@ -23,6 +25,7 @@ interface Client {
 }
 
 const NPD_LIMIT = 2_400_000
+const FREE_ENTRY_LIMIT = 50
 const MONTH_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек']
 
 const DEMO: Income[] = [
@@ -50,26 +53,36 @@ export default function IncomeTracker() {
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null)
   const [receiptState, setReceiptState] = useState<Record<string, 'loading' | 'ok' | 'error'>>({})
   const [nalogConnected, setNalogConnected] = useState(false)
+  const [importError, setImportError] = useState('')
+  const [userPlan, setUserPlan] = useState<string>('free')
+  const [showLimitModal, setShowLimitModal] = useState(false)
 
   useEffect(() => {
     function loadData() {
       setIncomes(loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, DEMO))
       setClients(loadFromStorage<Client[]>(STORAGE_KEYS.CLIENTS, []))
     }
+    autoAddRecurring<Income>(STORAGE_KEYS.INCOMES, (_item, dateStr) => ({ date: dateStr, status: 'paid' as const }))
     loadData()
     setHydrated(true)
     setSelectedMonth(new Date().getMonth() + 1)
-    const creds = localStorage.getItem('sb_nalog_creds')
-    if (creds) {
-      try { setNalogConnected(!!JSON.parse(creds)?.token) } catch { /* ignore */ }
-    }
+    const nalogCreds = loadFromStorage<{ token?: string }>(STORAGE_KEYS.NALOG_CREDS, {})
+    setNalogConnected(!!nalogCreds.token)
+    fetch('/api/subscription').then((r) => r.json()).then((d) => setUserPlan(d.plan ?? 'free')).catch(() => null)
     window.addEventListener('svoy-storage-updated', loadData)
     return () => window.removeEventListener('svoy-storage-updated', loadData)
+  }, [])
+
+  useEffect(() => {
+    function openForm() { setShowForm(true); setEditingId(null) }
+    window.addEventListener('sb:open-add-income', openForm)
+    return () => window.removeEventListener('sb:open-add-income', openForm)
   }, [])
 
   function updateIncomes(next: Income[]) {
     setIncomes(next)
     saveToStorage(STORAGE_KEYS.INCOMES, next)
+    window.dispatchEvent(new CustomEvent('svoy-storage-updated'))
   }
 
   const currentYear = new Date().getFullYear()
@@ -78,7 +91,7 @@ export default function IncomeTracker() {
 
   const yearIncomes = useMemo(() =>
     incomes.filter((i) => parseInt(i.date.split('-')[0]) === currentYear),
-    [incomes]
+    [incomes, currentYear]
   )
 
   const totalIncome = yearIncomes.reduce((s, i) => s + i.amount, 0)
@@ -112,7 +125,20 @@ export default function IncomeTracker() {
     })
   }, [incomes, selectedMonth, search])
 
+  function handleShowForm() {
+    if (userPlan === 'free' && incomes.length >= FREE_ENTRY_LIMIT) {
+      setShowLimitModal(true)
+      return
+    }
+    setShowForm(!showForm)
+    setEditingId(null)
+  }
+
   function addIncome() {
+    if (userPlan === 'free' && incomes.length >= FREE_ENTRY_LIMIT) {
+      setShowLimitModal(true)
+      return
+    }
     const amount = parseFloat(form.amount.replace(/\s/g, '').replace(',', '.'))
     if (!form.description.trim() || isNaN(amount) || amount <= 0) return
     const client = clients.find((c) => c.id === form.clientId)
@@ -154,29 +180,70 @@ export default function IncomeTracker() {
   }
 
   async function sendReceipt(income: Income) {
-    const raw = localStorage.getItem('sb_nalog_creds')
-    if (!raw) return
-    let creds: { token?: string; inn?: string }
-    try { creds = JSON.parse(raw) } catch { return }
+    const creds = loadFromStorage<{ token?: string; inn?: string }>(STORAGE_KEYS.NALOG_CREDS, {})
     if (!creds.token || !creds.inn) return
 
     setReceiptState((s) => ({ ...s, [income.id]: 'loading' }))
     const profile = loadFromStorage<{ clientInn?: string }>(STORAGE_KEYS.PROFILE, {})
-    const res = await fetch('/api/nalog/receipt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: income.amount,
-        description: income.description,
-        isLegal: income.isLegal,
-        clientName: income.clientName,
-        clientInn: income.isLegal ? profile.clientInn : undefined,
-        nalogToken: creds.token,
-        nalogInn: creds.inn,
-      }),
-    })
-    setReceiptState((s) => ({ ...s, [income.id]: res.ok ? 'ok' : 'error' }))
+    try {
+      const res = await fetch('/api/nalog/receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: income.amount,
+          description: income.description,
+          isLegal: income.isLegal,
+          clientName: income.clientName,
+          clientInn: income.isLegal ? profile.clientInn : undefined,
+          nalogToken: creds.token,
+          nalogInn: creds.inn,
+        }),
+      })
+      setReceiptState((s) => ({ ...s, [income.id]: res.ok ? 'ok' : 'error' }))
+    } catch {
+      setReceiptState((s) => ({ ...s, [income.id]: 'error' }))
+    }
     setTimeout(() => setReceiptState((s) => { const n = { ...s }; delete n[income.id]; return n }), 3000)
+  }
+
+  function useAsTemplate(income: Income) {
+    const client = clients.find((c) => c.id === income.clientId)
+    setForm({
+      description: income.description,
+      amount: String(income.amount),
+      isLegal: income.isLegal,
+      clientId: income.clientId ?? '',
+      recurring: income.recurring ?? false,
+    })
+    setEditingId(null)
+    setShowForm(true)
+  }
+
+  function importCSV(file: File) {
+    setImportError('')
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const text = (e.target?.result as string).replace(/^﻿/, '')
+        const lines = text.split('\n').filter(Boolean)
+        const dataLines = lines[0]?.toLowerCase().includes('дата') || lines[0]?.toLowerCase().includes('date') ? lines.slice(1) : lines
+        const parsed: Income[] = []
+        for (const line of dataLines) {
+          const cols = line.split(',').map((s) => s.replace(/^"(.*)"$/, '$1').trim())
+          const date = cols[0] ?? ''
+          const description = cols[1] ?? ''
+          const amount = parseFloat(cols[2] ?? '0')
+          if (!date || !description || isNaN(amount) || amount <= 0) continue
+          const isLegal = (cols[3] ?? '').toLowerCase().includes('юр') || (cols[3] ?? '').includes('6%')
+          parsed.push({ id: Date.now().toString() + Math.random(), description, amount, isLegal, date })
+        }
+        if (parsed.length === 0) { setImportError('Не удалось распознать данные CSV'); return }
+        updateIncomes([...incomes, ...parsed])
+      } catch {
+        setImportError('Ошибка чтения файла')
+      }
+    }
+    reader.readAsText(file, 'utf-8')
   }
 
   function exportCSV() {
@@ -310,13 +377,17 @@ export default function IncomeTracker() {
             )}
           </div>
           <div className="flex items-center gap-1">
+            <label title="Импорт CSV" className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 font-medium px-2.5 py-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+              <Upload className="w-3.5 h-3.5" />
+              <input type="file" accept=".csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importCSV(f); e.target.value = '' }} />
+            </label>
             {incomes.length > 0 && (
               <button onClick={exportCSV} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 font-medium px-2.5 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                 <Download className="w-3.5 h-3.5" />CSV
               </button>
             )}
             <button
-              onClick={() => { setShowForm(!showForm); setEditingId(null) }}
+              onClick={handleShowForm}
               className={cn(
                 'flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all',
                 showForm ? 'bg-gray-100 text-gray-600' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm shadow-indigo-200'
@@ -327,6 +398,10 @@ export default function IncomeTracker() {
             </button>
           </div>
         </div>
+
+        {importError && (
+          <div className="px-5 py-2 bg-red-50 text-red-600 text-xs border-b border-red-100">{importError}</div>
+        )}
 
         {/* Search + month filter */}
         {incomes.length > 0 && (
@@ -496,13 +571,29 @@ export default function IncomeTracker() {
                         ↻ Регулярный
                       </span>
                     )}
+                    {income.status === 'pending' && (
+                      <span className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md">
+                        <Clock className="w-2.5 h-2.5" />
+                        Ожидает
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="font-bold text-gray-900 text-sm">{formatRubles(income.amount)}</p>
+                  <p className={cn('font-bold text-sm', income.status === 'pending' ? 'text-amber-600' : 'text-gray-900')}>{formatRubles(income.amount)}</p>
                   <p className="text-[11px] text-gray-400 mt-0.5">налог {formatRubles(tax)}</p>
                 </div>
                 <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    onClick={() => updateIncomes(incomes.map((i) => i.id === income.id ? { ...i, status: i.status === 'pending' ? 'paid' : 'pending' } : i))}
+                    title={income.status === 'pending' ? 'Отметить как оплачено' : 'Отметить как ожидает оплаты'}
+                    className={cn('p-1.5 rounded-lg transition-colors', income.status === 'pending' ? 'text-amber-500 bg-amber-50 hover:bg-amber-100' : 'text-gray-300 hover:text-amber-500 hover:bg-amber-50')}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => useAsTemplate(income)} title="Добавить снова" className="p-1.5 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors">
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
                   {nalogConnected && (
                     <button
                       onClick={() => sendReceipt(income)}
@@ -537,6 +628,35 @@ export default function IncomeTracker() {
           })}
         </div>
       </div>
+
+      {/* Plan limit modal */}
+      {showLimitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center animate-fade-up">
+            <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-7 h-7 text-amber-600" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900 mb-2">Лимит бесплатного плана</h2>
+            <p className="text-sm text-gray-500 mb-5">
+              На бесплатном тарифе можно хранить до {FREE_ENTRY_LIMIT} доходов. Перейдите на платный план, чтобы добавлять неограниченно.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLimitModal(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-colors"
+              >
+                Закрыть
+              </button>
+              <a
+                href="/pricing"
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+              >
+                Тарифы →
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

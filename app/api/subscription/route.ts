@@ -15,25 +15,30 @@ export async function GET() {
     })
   }
 
-  const [plan, usage, user] = await Promise.all([
-    getUserPlan(session.user.id),
-    getUserMonthlyUsage(session.user.id),
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { planExpiresAt: true, planPeriod: true },
-    }),
-  ])
+  try {
+    const [plan, usage, user] = await Promise.all([
+      getUserPlan(session.user.id),
+      getUserMonthlyUsage(session.user.id),
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { planExpiresAt: true, planPeriod: true },
+      }),
+    ])
 
-  const limits = PLAN_LIMITS[plan]
+    const limits = PLAN_LIMITS[plan]
 
-  return NextResponse.json({
-    plan,
-    expiresAt: user?.planExpiresAt ?? null,
-    period: user?.planPeriod ?? null,
-    usage,
-    limits: {
-      aiQuestions: limits.aiQuestions === Infinity ? null : limits.aiQuestions,
-      documents: limits.documents === Infinity ? null : limits.documents,
-    },
-  })
+    return NextResponse.json({
+      plan,
+      expiresAt: user?.planExpiresAt ?? null,
+      period: user?.planPeriod ?? null,
+      usage,
+      limits: {
+        aiQuestions: limits.aiQuestions === Infinity ? null : limits.aiQuestions,
+        documents: limits.documents === Infinity ? null : limits.documents,
+      },
+    })
+  } catch (e) {
+    console.error('[subscription] GET failed', e)
+    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+  }
 }

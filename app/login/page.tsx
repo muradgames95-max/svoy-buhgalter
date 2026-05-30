@@ -120,6 +120,12 @@ export default function LoginPage() {
               </button>
             </div>
 
+            <div className="flex justify-end">
+              <Link href="/forgot-password" className="text-xs text-gray-500 hover:text-indigo-400 transition-colors">
+                Забыли пароль?
+              </Link>
+            </div>
+
             {error && (
               <div className="flex items-center gap-2 px-3.5 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
