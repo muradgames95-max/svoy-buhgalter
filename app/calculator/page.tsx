@@ -1,5 +1,6 @@
 import AppShell from '@/components/layout/AppShell'
 import TaxCalculator from '@/components/calculator/TaxCalculator'
+import SickLeaveCalculator from '@/components/calculator/SickLeaveCalculator'
 import { Calculator } from 'lucide-react'
 
 export const metadata = {
@@ -28,6 +29,9 @@ export default function CalculatorPage() {
             </div>
           </div>
           <TaxCalculator />
+          <div className="mt-5">
+            <SickLeaveCalculator />
+          </div>
         </div>
       </div>
     </AppShell>
