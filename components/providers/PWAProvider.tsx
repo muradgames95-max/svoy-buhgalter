@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { registerSW } from '@/lib/pwa'
-import { checkDeadlineNotifications } from '@/lib/notifications'
+import { checkDeadlineNotifications, checkTaxReminderNotification } from '@/lib/notifications'
 import { WifiOff } from 'lucide-react'
 
 export default function PWAProvider() {
@@ -13,6 +13,7 @@ export default function PWAProvider() {
     registerSW()
     if (typeof window !== 'undefined' && Notification.permission === 'granted') {
       checkDeadlineNotifications()
+      checkTaxReminderNotification()
     }
 
     function handleOffline() {

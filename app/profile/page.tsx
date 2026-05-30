@@ -3,6 +3,7 @@ import ProfileEditor from '@/components/profile/ProfileEditor'
 import DataManager from '@/components/settings/DataManager'
 import NalogConnect from '@/components/profile/NalogConnect'
 import ReferralCard from '@/components/profile/ReferralCard'
+import TaxNotifySettings from '@/components/profile/TaxNotifySettings'
 import { UserCircle } from 'lucide-react'
 
 export default function ProfilePage() {
@@ -27,6 +28,7 @@ export default function ProfilePage() {
           <div className="space-y-4">
             <ProfileEditor />
             <NalogConnect />
+            <TaxNotifySettings />
             <ReferralCard />
             <DataManager />
           </div>

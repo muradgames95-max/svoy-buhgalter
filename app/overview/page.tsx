@@ -15,6 +15,7 @@ import HealthScore from '@/components/dashboard/HealthScore'
 import Achievements from '@/components/dashboard/Achievements'
 import TaxForecast from '@/components/dashboard/TaxForecast'
 import TipOfDay from '@/components/dashboard/TipOfDay'
+import TaxReminderBanner from '@/components/tax/TaxReminderBanner'
 import { loadFromStorage, saveToStorage, STORAGE_KEYS } from '@/lib/storage'
 import { DEADLINES_2026, getDaysUntil } from '@/lib/deadlines'
 import { calculateNPDTax, formatRubles } from '@/lib/utils'
@@ -370,6 +371,9 @@ export default function OverviewPage() {
               )}
             </div>
           </div>
+
+          {/* Tax payment reminder banner — shows 23rd–28th of month */}
+          <TaxReminderBanner />
 
           {/* Monthly goal setter */}
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
