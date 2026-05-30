@@ -311,7 +311,7 @@ export default function OverviewPage() {
                 {getGreeting()}{firstName ? `, ${firstName}` : ''}
               </h1>
 
-              <div className="grid grid-cols-2 gap-3 mb-5">
+              <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="bg-white/8 rounded-2xl px-4 py-3.5 border border-white/5">
                   <p className="text-gray-400 text-[11px] mb-1">В {MONTH_FULL[currentMonth - 1]}</p>
                   <p className="text-white font-bold text-xl leading-none">{formatRubles(thisMonthIncome)}</p>
@@ -322,12 +322,29 @@ export default function OverviewPage() {
                   )}
                 </div>
                 <div className="bg-white/8 rounded-2xl px-4 py-3.5 border border-white/5">
-                  <p className="text-gray-400 text-[11px] mb-1">Чистая прибыль</p>
+                  <p className="text-gray-400 text-[11px] mb-1">На руки за год</p>
                   <p className={cn('font-bold text-xl leading-none', (totalIncome - totalExpenses - totalTax) >= 0 ? 'text-emerald-400' : 'text-red-400')}>
                     {formatRubles(totalIncome - totalExpenses - totalTax)}
                   </p>
+                  {totalTax > 0 && (
+                    <p className="text-[10px] mt-1 text-amber-400/80">налог: {formatRubles(totalTax)}</p>
+                  )}
                 </div>
               </div>
+
+              {/* Monthly tax summary */}
+              {thisMonthTax > 0 && (
+                <div className="flex items-center justify-between mb-3 bg-amber-500/10 rounded-xl px-3.5 py-2.5 border border-amber-400/10">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-amber-200/80 text-[11px] font-medium">Налог в {MONTH_FULL[currentMonth - 1]}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-400 font-bold text-sm">{formatRubles(thisMonthTax)}</span>
+                    {isNpd && <span className="text-amber-200/50 text-[10px]">до {taxDueLabel}</span>}
+                  </div>
+                </div>
+              )}
 
               {/* Monthly goal bar */}
               {monthlyGoal > 0 && (
