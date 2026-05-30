@@ -111,13 +111,17 @@ export default function ExpenseTracker({ totalIncome }: { totalIncome: number })
   }, [expenses])
 
   const filtered = useMemo(() =>
-    expenses.filter((e) => {
-      const matchMonth = selectedMonth === null || parseInt(e.date.split('-')[1]) === selectedMonth
-      const matchSearch = !search || e.description.toLowerCase().includes(search.toLowerCase()) || e.category.toLowerCase().includes(search.toLowerCase())
-      return matchMonth && matchSearch
-    }),
+    expenses
+      .filter((e) => {
+        const matchMonth = selectedMonth === null || parseInt(e.date.split('-')[1]) === selectedMonth
+        const matchSearch = !search || e.description.toLowerCase().includes(search.toLowerCase()) || e.category.toLowerCase().includes(search.toLowerCase())
+        return matchMonth && matchSearch
+      })
+      .sort((a, b) => b.date.localeCompare(a.date)),
     [expenses, selectedMonth, search]
   )
+
+  const filteredTotal = useMemo(() => filtered.reduce((s, e) => s + e.amount, 0), [filtered])
 
   function handleShowForm() {
     if (userPlan === 'free' && expenses.length >= FREE_ENTRY_LIMIT) {
@@ -514,6 +518,13 @@ export default function ExpenseTracker({ totalIncome }: { totalIncome: number })
               <Search className="w-8 h-8 text-gray-200 mb-2" />
               <p className="text-sm text-gray-500">Ничего не найдено</p>
               <p className="text-xs text-gray-400 mt-1">Попробуйте другой запрос</p>
+            </div>
+          )}
+
+          {filtered.length > 1 && (
+            <div className="flex items-center justify-between px-5 py-2.5 bg-gray-50/80 border-b border-gray-100 sticky top-0 z-10">
+              <span className="text-[11px] font-medium text-gray-400">{filtered.length} записей</span>
+              <span className="text-[11px] font-bold text-rose-600">{formatRubles(filteredTotal)}</span>
             </div>
           )}
 

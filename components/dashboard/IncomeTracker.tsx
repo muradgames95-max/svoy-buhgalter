@@ -119,13 +119,17 @@ export default function IncomeTracker() {
 
   // Filtered list
   const filtered = useMemo(() => {
-    return incomes.filter((i) => {
-      const matchMonth = selectedMonth === null || parseInt(i.date.split('-')[1]) === selectedMonth
-      const matchSearch = !search || i.description.toLowerCase().includes(search.toLowerCase())
-      const matchStatus = statusFilter === 'all' || (statusFilter === 'pending' ? i.status === 'pending' : i.status !== 'pending')
-      return matchMonth && matchSearch && matchStatus
-    })
+    return incomes
+      .filter((i) => {
+        const matchMonth = selectedMonth === null || parseInt(i.date.split('-')[1]) === selectedMonth
+        const matchSearch = !search || i.description.toLowerCase().includes(search.toLowerCase())
+        const matchStatus = statusFilter === 'all' || (statusFilter === 'pending' ? i.status === 'pending' : i.status !== 'pending')
+        return matchMonth && matchSearch && matchStatus
+      })
+      .sort((a, b) => b.date.localeCompare(a.date))
   }, [incomes, selectedMonth, search, statusFilter])
+
+  const filteredTotal = useMemo(() => filtered.reduce((s, i) => s + i.amount, 0), [filtered])
 
   const pendingCount = useMemo(() => incomes.filter((i) => i.status === 'pending').length, [incomes])
 
@@ -556,6 +560,13 @@ export default function IncomeTracker() {
               <p className="text-xs text-gray-400 mt-1">
                 {search ? 'Попробуйте другой запрос' : selectedMonth !== null ? 'В этом месяце нет доходов' : 'Нажмите «Добавить»'}
               </p>
+            </div>
+          )}
+
+          {filtered.length > 1 && (
+            <div className="flex items-center justify-between px-5 py-2.5 bg-gray-50/80 border-b border-gray-100 sticky top-0 z-10">
+              <span className="text-[11px] font-medium text-gray-400">{filtered.length} записей</span>
+              <span className="text-[11px] font-bold text-gray-700">{formatRubles(filteredTotal)}</span>
             </div>
           )}
 

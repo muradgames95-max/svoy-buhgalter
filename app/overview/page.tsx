@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import {
-  TrendingUp, MessageCircle, FileText, Calculator,
+  TrendingUp, TrendingDown, MessageCircle, FileText, Calculator,
   Plus, ArrowRight, Wallet, CalendarClock, Sparkles, Target, Pencil, Check,
   ArrowUp, ArrowDown, Receipt, ShoppingBag, AlertCircle, StickyNote, X, BookOpen,
   RefreshCw, DollarSign, Clock, UserCircle,
@@ -22,7 +22,7 @@ import { calculateNPDTax, formatRubles } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
 interface Income { id: string; amount: number; isLegal: boolean; date: string; description: string; clientName?: string; status?: 'paid' | 'pending' }
-interface Expense { id: string; amount: number; category: string; date: string }
+interface Expense { id: string; amount: number; category: string; date: string; description?: string }
 interface UserProfile { name?: string; executorStatus?: string; activity?: string }
 
 const NPD_LIMIT = 2_400_000
@@ -246,6 +246,12 @@ export default function OverviewPage() {
     const sorted = Object.entries(map).sort((a, b) => b[1] - a[1])
     return sorted[0] ?? null
   }, [yearExpenses])
+
+  const biggestExpenseThisMonth = useMemo(() => {
+    const monthExpenses = yearExpenses.filter((e) => parseInt(e.date.split('-')[1]) === currentMonth)
+    if (monthExpenses.length === 0) return null
+    return monthExpenses.reduce((max, e) => e.amount > max.amount ? e : max)
+  }, [yearExpenses, currentMonth])
 
   const topClient = useMemo(() => {
     const map: Record<string, number> = {}
@@ -759,7 +765,7 @@ export default function OverviewPage() {
           />
 
           {/* Smart Insights */}
-          {(incomeMomentum !== null || thisMonthTax > 0 || topExpenseCategory || nextDeadline || topClient) && (
+          {(incomeMomentum !== null || thisMonthTax > 0 || topExpenseCategory || nextDeadline || topClient || biggestExpenseThisMonth) && (
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3 px-0.5">Инсайты</p>
               <div className="grid grid-cols-2 gap-3">
@@ -825,6 +831,20 @@ export default function OverviewPage() {
                       {nextDeadline.days === 0 ? 'сегодня' : `${nextDeadline.days} дн.`}
                     </p>
                     <p className="text-[11px] text-gray-400 mt-1 truncate">{nextDeadline.title}</p>
+                  </div>
+                )}
+
+                {/* Biggest expense this month */}
+                {biggestExpenseThisMonth && (
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <div className="w-6 h-6 rounded-lg bg-rose-100 flex items-center justify-center">
+                        <TrendingDown className="w-3.5 h-3.5 text-rose-600" />
+                      </div>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Топ расход</span>
+                    </div>
+                    <p className="text-sm font-bold leading-tight text-gray-900 truncate">{biggestExpenseThisMonth.description}</p>
+                    <p className="text-[11px] text-rose-500 font-semibold mt-1">{formatRubles(biggestExpenseThisMonth.amount)}</p>
                   </div>
                 )}
 

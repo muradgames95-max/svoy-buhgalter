@@ -74,10 +74,15 @@ function SummaryView({ totalIncome, totalExpenses }: { totalIncome: number; tota
   const currentYear = new Date().getFullYear()
 
   useEffect(() => {
-    const allIncomes = loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, [])
-    const allExpenses = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, [])
-    setIncomes(allIncomes.filter((i) => parseInt(i.date.split('-')[0]) === currentYear))
-    setExpenses(allExpenses.filter((e) => parseInt(e.date.split('-')[0]) === currentYear))
+    function loadData() {
+      const allIncomes = loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, [])
+      const allExpenses = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, [])
+      setIncomes(allIncomes.filter((i) => parseInt(i.date.split('-')[0]) === currentYear))
+      setExpenses(allExpenses.filter((e) => parseInt(e.date.split('-')[0]) === currentYear))
+    }
+    loadData()
+    window.addEventListener('svoy-storage-updated', loadData)
+    return () => window.removeEventListener('svoy-storage-updated', loadData)
   }, [currentYear])
 
   const tax = incomes.reduce((s, i) => s + calculateNPDTax(i.amount, i.isLegal), 0)
@@ -317,12 +322,17 @@ export default function DashboardContent() {
   const currentYear = new Date().getFullYear()
 
   useEffect(() => {
-    const incomes = loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, [])
-    const exps = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, [])
-    const yearIncomes = incomes.filter((i) => parseInt(i.date.split('-')[0]) === currentYear)
-    const yearExpenses = exps.filter((e) => parseInt(e.date.split('-')[0]) === currentYear)
-    setTotalIncome(yearIncomes.reduce((s, i) => s + i.amount, 0))
-    setTotalExpenses(yearExpenses.reduce((s, e) => s + e.amount, 0))
+    function loadTotals() {
+      const incomes = loadFromStorage<Income[]>(STORAGE_KEYS.INCOMES, [])
+      const exps = loadFromStorage<Expense[]>(STORAGE_KEYS.EXPENSES, [])
+      const yearIncomes = incomes.filter((i) => parseInt(i.date.split('-')[0]) === currentYear)
+      const yearExpenses = exps.filter((e) => parseInt(e.date.split('-')[0]) === currentYear)
+      setTotalIncome(yearIncomes.reduce((s, i) => s + i.amount, 0))
+      setTotalExpenses(yearExpenses.reduce((s, e) => s + e.amount, 0))
+    }
+    loadTotals()
+    window.addEventListener('svoy-storage-updated', loadTotals)
+    return () => window.removeEventListener('svoy-storage-updated', loadTotals)
   }, [tab, currentYear])
 
   useEffect(() => {
