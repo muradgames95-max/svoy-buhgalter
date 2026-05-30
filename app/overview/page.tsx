@@ -63,6 +63,8 @@ export default function OverviewPage() {
   const [showNoteInput, setShowNoteInput] = useState(false)
   const [usdRate, setUsdRate] = useState(90)
   const [eurRate, setEurRate] = useState(98)
+  const [ratesDate, setRatesDate] = useState<string | null>(null)
+  const [ratesLoading, setRatesLoading] = useState(false)
   const [convAmount, setConvAmount] = useState('')
   const [convCurrency, setConvCurrency] = useState<'USD' | 'EUR'>('USD')
   const [editingRates, setEditingRates] = useState(false)
@@ -70,6 +72,19 @@ export default function OverviewPage() {
   const [clients, setClients] = useState<{ id: string }[]>([])
   const [documents, setDocuments] = useState<{ id: string }[]>([])
   const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    setRatesLoading(true)
+    fetch('/api/rates')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.usd) setUsdRate(data.usd)
+        if (data.eur) setEurRate(data.eur)
+        if (data.date) setRatesDate(data.date)
+      })
+      .catch(() => {})
+      .finally(() => setRatesLoading(false))
+  }, [])
 
   useEffect(() => {
     function loadData() {
@@ -537,12 +552,17 @@ export default function OverviewPage() {
                 <div className="w-7 h-7 rounded-lg bg-sky-100 flex items-center justify-center">
                   <DollarSign className="w-3.5 h-3.5 text-sky-600" />
                 </div>
-                <p className="font-bold text-gray-900 text-sm">Конвертер валют</p>
+                <div>
+                  <p className="font-bold text-gray-900 text-sm">Конвертер валют</p>
+                  {ratesDate && (
+                    <p className="text-[10px] text-sky-500 font-medium">Курс ЦБ РФ · {ratesDate}</p>
+                  )}
+                </div>
               </div>
               <button
                 onClick={() => setEditingRates(!editingRates)}
-                className="p-1.5 text-gray-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors"
-                title="Изменить курсы"
+                className={cn('p-1.5 hover:bg-sky-50 rounded-lg transition-colors', ratesLoading ? 'text-sky-400 animate-spin' : 'text-gray-400 hover:text-sky-600')}
+                title="Обновить / изменить курсы"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
               </button>
@@ -617,6 +637,7 @@ export default function OverviewPage() {
               <div className="text-right text-[10px] text-sky-400 space-y-0.5">
                 <p>1 USD = {usdRate} ₽</p>
                 <p>1 EUR = {eurRate} ₽</p>
+                {ratesDate && <p className="text-sky-300">ЦБ РФ · {ratesDate}</p>}
               </div>
             </div>
           </div>
