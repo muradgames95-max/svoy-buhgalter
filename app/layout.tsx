@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import SessionProvider from '@/components/providers/SessionProvider'
+import { Analytics } from '@vercel/analytics/next'
 
 export const viewport: Viewport = {
   themeColor: '#4f46e5',
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-full flex flex-col">
         <SessionProvider>{children}</SessionProvider>
+        <Analytics />
       </body>
     </html>
   )

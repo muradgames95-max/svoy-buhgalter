@@ -64,7 +64,6 @@ export default function QuickAdd() {
       clientName: client?.name,
     }]
     saveToStorage(STORAGE_KEYS.INCOMES, next)
-    window.dispatchEvent(new CustomEvent('svoy-storage-updated'))
     setSaved(true)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(close, 1200)
@@ -82,7 +81,6 @@ export default function QuickAdd() {
       date: new Date().toISOString().split('T')[0],
     }]
     saveToStorage(STORAGE_KEYS.EXPENSES, next)
-    window.dispatchEvent(new CustomEvent('svoy-storage-updated'))
     setSaved(true)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(close, 1200)

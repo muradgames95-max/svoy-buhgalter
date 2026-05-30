@@ -13,6 +13,7 @@ export function saveToStorage<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value))
     window.dispatchEvent(new CustomEvent('sb:storage-updated', { detail: { key } }))
+    window.dispatchEvent(new CustomEvent('svoy-storage-updated', { detail: { key } }))
   } catch (e) {
     console.error('[storage] saveToStorage failed:', key, e)
   }
